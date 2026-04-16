@@ -109,7 +109,7 @@ function getStoredLanguage() {
     }
 }
 
-const currentLanguage = getStoredLanguage();
+let currentLanguage = getStoredLanguage();
 
 function t(key, fallback = "") {
     return translations[currentLanguage][key] ?? fallback;
@@ -187,13 +187,28 @@ async function init() {
 }
 
 function setLanguage(lang) {
-    if (!SUPPORTED_LANGS.has(lang)) return;
+    if (!SUPPORTED_LANGS.has(lang) || lang === currentLanguage) return;
+    currentLanguage = lang;
     try {
         localStorage.setItem(LANG_STORAGE_KEY, lang);
     } catch {
-        // Ignore storage failures and still reload.
+        // Ignore storage failures and still update UI in-memory.
     }
-    window.location.reload();
+
+    highlightActiveLanguage();
+    applyStaticTranslations();
+    applyPanelVisibility();
+    refreshPageUi();
+    renderDashboard();
+    refreshPopoverLabels();
+}
+
+function refreshPopoverLabels() {
+    if (dom.hlPopover.style.display !== "none") {
+        dom.saveHighlightBtn.textContent = state.pendingHighlightEdit
+            ? t("update", "Update")
+            : t("highlight", "Highlight");
+    }
 }
 
 function highlightActiveLanguage() {

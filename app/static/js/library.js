@@ -211,24 +211,33 @@ function getStoredLanguage() {
     }
 }
 
-const currentLanguage = getStoredLanguage();
+let currentLanguage = getStoredLanguage();
 
 function t(key, fallback = "") {
     return translations[currentLanguage][key] ?? fallback;
 }
 
-const statusLabels = {
-    to_read: t("statusToRead", "To read"),
-    reading: t("statusReading", "Reading"),
-    read: t("statusRead", "Read"),
-    to_reread: t("statusReread", "To reread"),
-};
+function getStatusLabel(status) {
+    switch (status) {
+    case "to_read":
+        return t("statusToRead", "To read");
+    case "reading":
+        return t("statusReading", "Reading");
+    case "read":
+        return t("statusRead", "Read");
+    case "to_reread":
+        return t("statusReread", "To reread");
+    default:
+        return status;
+    }
+}
 
 const statusOptions = ["to_read", "reading", "read", "to_reread"];
 
 const state = {
     articles: [],
     facetArticles: [],
+    allCountArticles: [],
     collections: [],
     selectedIds: new Set(),
     viewMode: "articles",
@@ -290,6 +299,7 @@ const dom = {
     uploadModal: document.getElementById("uploadModal"),
     uploadFile: document.getElementById("uploadFile"),
     uploadArxiv: document.getElementById("uploadArxiv"),
+    uploadCollections: document.getElementById("uploadCollections"),
     cancelUploadBtn: document.getElementById("cancelUploadBtn"),
     confirmUploadBtn: document.getElementById("confirmUploadBtn"),
 
@@ -329,13 +339,16 @@ function init() {
 }
 
 function setLanguage(lang) {
-    if (!SUPPORTED_LANGS.has(lang)) return;
+    if (!SUPPORTED_LANGS.has(lang) || lang === currentLanguage) return;
+    currentLanguage = lang;
     try {
         localStorage.setItem(LANG_STORAGE_KEY, lang);
     } catch {
-        // Ignore storage failures and still reload.
+        // Ignore storage failures and still update UI in-memory.
     }
-    window.location.reload();
+    highlightActiveLanguage();
+    applyStaticTranslations();
+    renderAll();
 }
 
 function highlightActiveLanguage() {
@@ -412,6 +425,8 @@ function applyStaticTranslations() {
     if (uploadArxivLabel) uploadArxivLabel.textContent = t("uploadArxivLabel", uploadArxivLabel.textContent);
     const uploadHint = document.querySelector("#uploadArxiv + p");
     if (uploadHint) uploadHint.textContent = t("uploadArxivHint", uploadHint.textContent);
+    const uploadCollectionsLabel = document.querySelector("label[for='uploadCollections']");
+    if (uploadCollectionsLabel) uploadCollectionsLabel.textContent = t("collections", uploadCollectionsLabel.textContent);
 
     const labelMap = [
         ["editTitle", "title"],
@@ -481,7 +496,10 @@ function bindEvents() {
     dom.collectionsViewBtn.addEventListener("click", () => setViewMode("collections"));
     dom.backToCollectionsBtn.addEventListener("click", closeCollectionDetail);
 
-    dom.uploadBtn.addEventListener("click", () => openModal(dom.uploadModal));
+    dom.uploadBtn.addEventListener("click", () => {
+        renderUploadCollectionChecklist();
+        openModal(dom.uploadModal);
+    });
     dom.cancelUploadBtn.addEventListener("click", () => closeModal(dom.uploadModal));
     dom.confirmUploadBtn.addEventListener("click", uploadArticle);
 
@@ -508,7 +526,7 @@ function bindEvents() {
     if (dom.clearYearRangeBtn) {
         dom.clearYearRangeBtn.addEventListener("click", () => {
             clearYearRangeFilter();
-            loadArticles();
+            refreshDataForCurrentView();
         });
     }
     if (dom.yearRangeStart) {
@@ -595,14 +613,17 @@ async function loadArticles() {
 
         const filteredUrl = filteredParams.toString() ? `/api/articles?${filteredParams}` : "/api/articles";
         const facetUrl = facetParams.toString() ? `/api/articles?${facetParams}` : "/api/articles";
+        const allCountUrl = "/api/articles";
 
-        const [filteredArticles, facetArticles] = await Promise.all([
+        const [filteredArticles, facetArticles, allCountArticles] = await Promise.all([
             fetchJson(filteredUrl),
             fetchJson(facetUrl),
+            fetchJson(allCountUrl),
         ]);
 
         state.articles = applyYearRangeFilter(filteredArticles, state.filters.yearRange);
         state.facetArticles = facetArticles;
+        state.allCountArticles = allCountArticles;
         dropInvalidSelections();
         renderAll();
     } catch (err) {
@@ -617,13 +638,32 @@ async function loadCollectionViewArticles(collectionId = state.collectionView.se
         const params = new URLSearchParams();
         params.set("collection", String(collectionId));
         if (state.filters.q) params.set("q", state.filters.q);
+        if (state.filters.status) params.set("status", state.filters.status);
 
-        state.collectionView.articles = await fetchJson(`/api/articles?${params}`);
+        const articles = await fetchJson(`/api/articles?${params}`);
+        state.collectionView.articles = applyYearRangeFilter(articles, state.filters.yearRange);
         dropInvalidSelections();
         renderCollectionArticleGrid();
+        renderCollectionsBrowser();
     } catch (err) {
         toast(err.message || t("toastLoadCollectionArticlesError", "Error loading collection articles"), "error");
     }
+}
+
+function refreshDataForCurrentView() {
+    if (state.viewMode === "collections" && state.collectionView.selectedCollectionId) {
+        loadCollectionViewArticles();
+        return;
+    }
+    loadArticles();
+}
+
+function getFacetSource() {
+    if (state.viewMode === "collections" && state.collectionView.selectedCollectionId) {
+        const selectedId = state.collectionView.selectedCollectionId;
+        return state.facetArticles.filter((article) => (article.collection_ids || []).includes(selectedId));
+    }
+    return state.facetArticles;
 }
 
 function renderAll() {
@@ -639,6 +679,12 @@ function renderAll() {
 
 function setViewMode(mode) {
     state.viewMode = mode;
+
+    if (mode === "collections") {
+        // A collection filter is meaningless inside collections browsing.
+        state.filters.collection = null;
+    }
+
     applyViewMode();
 
     if (mode === "collections") {
@@ -658,8 +704,8 @@ function applyViewMode() {
     dom.collectionsViewBtn.classList.toggle("active", !isArticlesView);
     dom.articlesViewSection.style.display = isArticlesView ? "block" : "none";
     dom.collectionsViewSection.style.display = isArticlesView ? "none" : "block";
-    dom.statusFilterGroup.style.display = isArticlesView ? "block" : "none";
-    dom.yearFilterGroup.style.display = isArticlesView ? "block" : "none";
+    dom.statusFilterGroup.style.display = "block";
+    dom.yearFilterGroup.style.display = "block";
 }
 
 function renderHeaderInfo() {
@@ -676,7 +722,7 @@ function renderHeaderInfo() {
         if (col) parts.push(`${t("filteredCollection", "collection")}: ${col.name}`);
     }
     if (state.filters.status) {
-        parts.push(`${t("filteredStatus", "status")}: ${statusLabels[state.filters.status] || state.filters.status}`);
+        parts.push(`${t("filteredStatus", "status")}: ${getStatusLabel(state.filters.status)}`);
     }
     if (state.filters.yearRange) {
         parts.push(`${t("filteredYears", "years")}: ${state.filters.yearRange.label}`);
@@ -687,11 +733,20 @@ function renderHeaderInfo() {
 function renderCollections() {
     dom.collectionList.innerHTML = "";
     const isCollectionView = state.viewMode === "collections";
+
+    // Hide the collection filter list while browsing collections.
+    dom.collectionList.style.display = isCollectionView ? "none" : "";
+    if (isCollectionView) {
+        renderUploadCollectionChecklist();
+        renderCollectionChecklist();
+        return;
+    }
+
     const allLabel = isCollectionView ? t("allCollectionsLabel", "All collections") : t("allFeminine", "All");
     const allActive = isCollectionView
         ? state.collectionView.selectedCollectionId === null
         : state.filters.collection === null;
-    const allCount = isCollectionView ? state.collections.length : state.articles.length;
+    const allCount = isCollectionView ? state.collections.length : state.allCountArticles.length;
 
     const allItem = buildSidebarItem(allLabel, allActive, allCount, () => {
         if (isCollectionView) {
@@ -704,9 +759,7 @@ function renderCollections() {
     dom.collectionList.appendChild(allItem);
 
     state.collections.forEach((col) => {
-        const count = isCollectionView
-            ? col.article_count
-            : state.articles.filter((a) => (a.collection_ids || []).includes(col.id)).length;
+        const count = col.article_count;
         const active = isCollectionView
             ? state.collectionView.selectedCollectionId === col.id
             : state.filters.collection === col.id;
@@ -723,6 +776,7 @@ function renderCollections() {
         dom.collectionList.appendChild(item);
     });
 
+    renderUploadCollectionChecklist();
     renderCollectionChecklist();
 }
 
@@ -739,19 +793,13 @@ function renderCollectionsBrowser() {
 
         const metaParts = [];
         if (current?.description) metaParts.push(current.description);
-        if (typeof current?.article_count === "number") {
-            metaParts.push(`${current.article_count} ${current.article_count > 1 ? t("resultLabelArticles", "articles") : t("resultLabelArticle", "article")}`);
-        }
+        const detailCount = state.collectionView.articles.length;
+        metaParts.push(`${detailCount} ${detailCount > 1 ? t("resultLabelArticles", "articles") : t("resultLabelArticle", "article")}`);
         dom.collectionDetailMeta.textContent = metaParts.join(" | ");
         return;
     }
 
-    const q = state.filters.q.toLowerCase();
-    const visibleCollections = state.collections.filter((collection) => {
-        if (!q) return true;
-        const haystack = `${collection.name} ${collection.description || ""}`.toLowerCase();
-        return haystack.includes(q);
-    });
+    const visibleCollections = state.collections;
 
     dom.collectionsGrid.innerHTML = "";
     dom.collectionsEmptyState.style.display = visibleCollections.length ? "none" : "block";
@@ -774,7 +822,8 @@ function renderCollectionsBrowser() {
 
         const count = document.createElement("span");
         count.className = "count-badge";
-        count.textContent = `${collection.article_count} ${collection.article_count > 1 ? t("resultLabelArticles", "articles") : t("resultLabelArticle", "article")}`;
+        const collectionCount = collection.article_count;
+        count.textContent = `${collectionCount} ${collectionCount > 1 ? t("resultLabelArticles", "articles") : t("resultLabelArticle", "article")}`;
         footer.appendChild(count);
 
         const openBtn = actionBtn(t("open", "Open"), "btn-primary", () => openCollectionDetail(collection.id));
@@ -804,7 +853,7 @@ function closeCollectionDetail() {
 }
 
 function renderStatusFilters() {
-    const source = applyYearRangeFilter(state.facetArticles, state.filters.yearRange);
+    const source = applyYearRangeFilter(getFacetSource(), state.filters.yearRange);
     const values = [
         ["to_read", t("statusToRead", "To read")],
         ["reading", t("statusReading", "Reading")],
@@ -815,7 +864,7 @@ function renderStatusFilters() {
     dom.statusList.innerHTML = "";
     const all = buildSidebarItem(t("all", "All"), state.filters.status === null, source.length, () => {
         state.filters.status = null;
-        loadArticles();
+        refreshDataForCurrentView();
     });
     dom.statusList.appendChild(all);
 
@@ -823,21 +872,22 @@ function renderStatusFilters() {
         const count = source.filter((a) => a.reading_status === value).length;
         const item = buildSidebarItem(label, state.filters.status === value, count, () => {
             state.filters.status = value;
-            loadArticles();
+            refreshDataForCurrentView();
         });
         dom.statusList.appendChild(item);
     });
 }
 
 function renderYearFilters() {
+    const facetSource = getFacetSource();
     const source = state.filters.status
-        ? state.facetArticles.filter((a) => a.reading_status === state.filters.status)
-        : state.facetArticles;
+        ? facetSource.filter((a) => a.reading_status === state.filters.status)
+        : facetSource;
     dom.yearList.innerHTML = "";
 
     const all = buildSidebarItem(t("allFeminine", "All"), state.filters.yearRange === null, source.length, () => {
         clearYearRangeFilter();
-        loadArticles();
+        refreshDataForCurrentView();
     });
     dom.yearList.appendChild(all);
 
@@ -849,7 +899,7 @@ function renderYearFilters() {
             bucket.count,
             () => {
                 setYearRangeFilter(bucket.start, bucket.end, bucket.label, "decade");
-                loadArticles();
+                refreshDataForCurrentView();
             }
         );
         dom.yearList.appendChild(item);
@@ -878,7 +928,7 @@ function applyCustomYearRange() {
 
     if (!startRaw && !endRaw) {
         clearYearRangeFilter();
-        loadArticles();
+        refreshDataForCurrentView();
         return;
     }
 
@@ -901,7 +951,7 @@ function applyCustomYearRange() {
     }
 
     setYearRangeFilter(start, end, `${start}-${end}`, "custom");
-    loadArticles();
+    refreshDataForCurrentView();
 }
 
 function applyYearRangeFilter(articles, range) {
@@ -1027,7 +1077,7 @@ function buildArticleCard(article) {
     const meta = document.createElement("div");
     meta.className = "meta";
     const yearBadge = badge(article.year ? String(article.year) : "n.d.");
-    const statusBadge = badge(statusLabels[article.reading_status] || t("statusNA", "status n/a"));
+    const statusBadge = badge(getStatusLabel(article.reading_status) || t("statusNA", "status n/a"));
     meta.appendChild(yearBadge);
     meta.appendChild(statusBadge);
     if (article.discipline) meta.appendChild(badge(article.discipline));
@@ -1196,7 +1246,7 @@ function renderQuickActionMenu() {
             const button = document.createElement("button");
             button.type = "button";
             button.className = `quick-menu-item ${article.reading_status === status ? "active" : ""}`.trim();
-            button.textContent = statusLabels[status] || status;
+            button.textContent = getStatusLabel(status);
             button.addEventListener("click", async (event) => {
                 event.stopPropagation();
                 await setArticleStatusQuick(article.id, status);
@@ -1311,6 +1361,9 @@ async function uploadArticle() {
     if (arxiv) {
         form.append("arxiv", arxiv);
     }
+    getUploadSelectedCollectionIds().forEach((collectionId) => {
+        form.append("collection_ids", String(collectionId));
+    });
 
     try {
         const response = await fetch("/api/articles", { method: "POST", body: form });
@@ -1322,6 +1375,7 @@ async function uploadArticle() {
         closeModal(dom.uploadModal);
         dom.uploadFile.value = "";
         dom.uploadArxiv.value = "";
+        renderUploadCollectionChecklist();
         toast(t("toastUploadSuccess", "Article added"), "success");
         await refresh();
     } catch (err) {
@@ -1371,6 +1425,36 @@ function renderCollectionChecklist(selectedIds = []) {
         label.appendChild(checkbox);
         label.appendChild(text);
         dom.editCollections.appendChild(label);
+    });
+}
+
+function renderUploadCollectionChecklist(selectedIds = []) {
+    if (!dom.uploadCollections) return;
+    dom.uploadCollections.innerHTML = "";
+
+    if (!state.collections.length) {
+        const p = document.createElement("p");
+        p.className = "muted";
+        p.textContent = t("noCollectionAvailable", "No collections");
+        dom.uploadCollections.appendChild(p);
+        return;
+    }
+
+    state.collections.forEach((collection) => {
+        const label = document.createElement("label");
+        label.className = "checkbox-item";
+
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.value = String(collection.id);
+        checkbox.checked = selectedIds.includes(collection.id);
+
+        const text = document.createElement("span");
+        text.textContent = collection.name;
+
+        label.appendChild(checkbox);
+        label.appendChild(text);
+        dom.uploadCollections.appendChild(label);
     });
 }
 
@@ -1514,6 +1598,16 @@ async function createCollection() {
 function getSelectedCollectionIds() {
     const ids = [];
     dom.editCollections.querySelectorAll("input[type='checkbox']").forEach((box) => {
+        if (box.checked) ids.push(Number(box.value));
+    });
+    return ids;
+}
+
+function getUploadSelectedCollectionIds() {
+    const ids = [];
+    if (!dom.uploadCollections) return ids;
+
+    dom.uploadCollections.querySelectorAll("input[type='checkbox']").forEach((box) => {
         if (box.checked) ids.push(Number(box.value));
     });
     return ids;

@@ -8,7 +8,7 @@ from app import db
 
 from app.services import article_service, file_service, search_service, arxiv_service
 from app.services.bibtex_service import article_to_bibtex, articles_to_bibtex
-from app.models import Article
+from app.models import Article, Collection
 
 articles_bp = Blueprint("articles", __name__)
 
@@ -38,6 +38,27 @@ def upload_article():
     file = request.files.get("file")
     has_file = bool(file and file.filename)
     arxiv_input = (request.form.get("arxiv") or "").strip() or None
+    raw_collection_ids = request.form.getlist("collection_ids")
+
+    collection_ids = []
+    for value in raw_collection_ids:
+        try:
+            collection_ids.append(int(value))
+        except (TypeError, ValueError):
+            continue
+
+    collection_ids = list(set(collection_ids))
+
+    def attach_selected_collections(article):
+        if not collection_ids:
+            return
+        collections = Collection.query.filter(Collection.id.in_(collection_ids)).all()
+        if not collections:
+            return
+        for col in collections:
+            if col not in article.collections:
+                article.collections.append(col)
+        db.session.commit()
 
     if has_file and not file_service.allowed_file(file.filename):
         return jsonify({"error": "only PDF allowed"}), 400
@@ -51,6 +72,7 @@ def upload_article():
         if aid:
             existing = Article.query.filter_by(arxiv_id=aid).first()
             if existing:
+                attach_selected_collections(existing)
                 return jsonify(existing.to_dict()), 200
 
     try:
@@ -63,6 +85,8 @@ def upload_article():
     except IntegrityError:
         db.session.rollback()
         return jsonify({"error": "article already exists (duplicate DOI)"}), 409
+
+    attach_selected_collections(article)
 
     return jsonify(article.to_dict()), 201
 
