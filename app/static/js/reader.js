@@ -35,7 +35,7 @@ const dom = {
     nextBtn: document.getElementById("nextBtn"),
     zoomDown: document.getElementById("zoomDown"),
     zoomUp: document.getElementById("zoomUp"),
-    togglePanelBtn: document.getElementById("togglePanelBtn"),
+    panelDrawerToggle: document.getElementById("panelDrawerToggle"),
     zoomLabel: document.getElementById("zoomLabel"),
     pageSlider: document.getElementById("pageSlider"),
     exportMdBtn: document.getElementById("exportMdBtn"),
@@ -75,7 +75,9 @@ function bindEvents() {
     dom.nextBtn.addEventListener("click", () => goToPage(state.pageNumber + 1));
     dom.zoomDown.addEventListener("click", () => { void setZoom(state.zoom - 0.1); });
     dom.zoomUp.addEventListener("click", () => { void setZoom(state.zoom + 0.1); });
-    dom.togglePanelBtn.addEventListener("click", togglePanelVisibility);
+    if (dom.panelDrawerToggle) {
+        dom.panelDrawerToggle.addEventListener("click", togglePanelVisibility);
+    }
 
     if (dom.pageSlider) {
         dom.pageSlider.addEventListener("input", () => {
@@ -155,9 +157,10 @@ function savePanelPreference() {
 
 function applyPanelVisibility() {
     dom.readerMain.classList.toggle("no-panel", !state.panelOpen);
-    dom.readerPanel.style.display = state.panelOpen ? "block" : "none";
-    dom.togglePanelBtn.textContent = state.panelOpen ? "Masquer panneau" : "Afficher panneau";
-    dom.togglePanelBtn.setAttribute("aria-expanded", state.panelOpen ? "true" : "false");
+    if (dom.panelDrawerToggle) {
+        dom.panelDrawerToggle.textContent = state.panelOpen ? "Masquer panneau" : "Afficher panneau";
+        dom.panelDrawerToggle.setAttribute("aria-expanded", state.panelOpen ? "true" : "false");
+    }
 }
 
 function togglePanelVisibility() {

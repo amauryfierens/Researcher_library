@@ -1,8 +1,215 @@
+const LANG_STORAGE_KEY = "siteLang";
+const SUPPORTED_LANGS = new Set(["fr", "en"]);
+
+const translations = {
+    fr: {
+        appLogo: "Research Library",
+        searchPlaceholder: "Rechercher (titre, auteurs, DOI, arXiv, texte intégral)...",
+        viewArticles: "Vue articles",
+        viewCollections: "Vue collections",
+        addArticle: "Ajouter un article",
+        exportSelected: "Exporter BibTeX sélection",
+        resetFilters: "Réinitialiser filtres",
+        collections: "Collections",
+        newCollection: "Nouvelle collection",
+        newCollectionOptionalDescription: "Description (optionnel)",
+        create: "Créer",
+        readingStatus: "Statut de lecture",
+        years: "Années",
+        yearFrom: "De",
+        yearTo: "A",
+        apply: "Appliquer",
+        clear: "Effacer",
+        allArticles: "Tous les articles",
+        noArticles: "Aucun article",
+        emptyArticlesHint: "Ajoutez un PDF et, optionnellement, une URL/ID arXiv pour auto-remplir les métadonnées.",
+        noCollections: "Aucune collection",
+        noCollectionsHint: "Créez une collection depuis la barre latérale pour organiser votre bibliothèque.",
+        backToCollections: "Retour aux collections",
+        collectionDefaultTitle: "Collection",
+        noArticleInCollection: "Aucun article dans cette collection",
+        noArticleInCollectionHint: "Ajoutez des articles à cette collection via l'édition d'un article.",
+        uploadArticleTitle: "Ajouter un article",
+        uploadPdfLabel: "Fichier PDF (optionnel)",
+        uploadArxivLabel: "URL/ID arXiv (optionnel)",
+        uploadArxivHint: "Sans PDF, l'application télécharge automatiquement le PDF depuis arXiv et remplit les métadonnées bibliographiques.",
+        cancel: "Annuler",
+        editArticle: "Modifier l'article",
+        title: "Titre",
+        authorsCsv: "Auteurs (séparés par virgule)",
+        abstract: "Résumé",
+        year: "Année",
+        status: "Statut",
+        discipline: "Discipline",
+        keywordsCsv: "Mots-clés (séparés par virgule)",
+        arxivRefetch: "arXiv ID/URL (pour re-fetch)",
+        refetchArxiv: "Re-fetch arXiv",
+        save: "Enregistrer",
+        deleteConfirmTitle: "Supprimer cet article ?",
+        delete: "Supprimer",
+        read: "Lire",
+        edit: "Editer",
+        open: "Ouvrir",
+        unknownAuthor: "Auteur inconnu",
+        untitled: "Sans titre",
+        statusNA: "statut n/a",
+        statusToRead: "A lire",
+        statusReading: "En cours",
+        statusRead: "Lu",
+        statusReread: "A relire",
+        all: "Tous",
+        allFeminine: "Toutes",
+        allCollectionsLabel: "Toutes les collections",
+        noDescription: "Aucune description",
+        chooseStatus: "Changer le statut",
+        noCollectionAvailable: "Aucune collection",
+        resultLabelArticle: "article",
+        resultLabelArticles: "articles",
+        filteredCollection: "collection",
+        filteredStatus: "statut",
+        filteredYears: "annees",
+        toastLoadCollectionsError: "Erreur chargement collections",
+        toastLoadArticlesError: "Erreur chargement articles",
+        toastLoadCollectionArticlesError: "Erreur chargement de la collection",
+        toastYearRangeIncomplete: "Saisissez une plage complete: annee debut et annee fin",
+        toastYearRangeInvalid: "Les annees doivent etre des nombres entiers",
+        toastStatusUpdateFailed: "Mise a jour du statut impossible",
+        toastStatusUpdated: "Statut mis a jour",
+        toastCollectionsUpdateFailed: "Mise a jour des collections impossible",
+        toastCollectionRemoved: "Retire de la collection",
+        toastCollectionAdded: "Ajoute a la collection",
+        toastUploadNeedInput: "Selectionnez un PDF ou renseignez une URL/ID arXiv",
+        toastUploadFailed: "Echec du televersement",
+        toastUploadSuccess: "Article ajoute",
+        toastArxivRequired: "Renseignez un ID ou URL arXiv",
+        toastArxivRefetchFailed: "Echec re-fetch arXiv",
+        toastArxivRefetchSuccess: "Metadonnees arXiv mises a jour",
+        toastUpdateFailed: "Echec mise a jour",
+        toastUpdateSuccess: "Metadonnees mises a jour",
+        toastDeleteFailed: "Suppression impossible",
+        toastDeleteSuccess: "Article supprime",
+        toastNeedSelection: "Selectionnez au moins un article",
+        toastExportFailed: "Export BibTeX impossible",
+        toastExportSuccess: "Export BibTeX termine",
+        toastCollectionNameRequired: "Nom de collection requis",
+        toastCollectionCreateFailed: "Creation impossible",
+        toastCollectionCreateSuccess: "Collection creee",
+    },
+    en: {
+        appLogo: "Research Library",
+        searchPlaceholder: "Search (title, authors, DOI, arXiv, full text)...",
+        viewArticles: "Articles view",
+        viewCollections: "Collections view",
+        addArticle: "Add article",
+        exportSelected: "Export selected BibTeX",
+        resetFilters: "Reset filters",
+        collections: "Collections",
+        newCollection: "New collection",
+        newCollectionOptionalDescription: "Description (optional)",
+        create: "Create",
+        readingStatus: "Reading status",
+        years: "Years",
+        yearFrom: "From",
+        yearTo: "To",
+        apply: "Apply",
+        clear: "Clear",
+        allArticles: "All articles",
+        noArticles: "No articles",
+        emptyArticlesHint: "Add a PDF and optionally an arXiv URL/ID to auto-fill metadata.",
+        noCollections: "No collections",
+        noCollectionsHint: "Create a collection from the sidebar to organize your library.",
+        backToCollections: "Back to collections",
+        collectionDefaultTitle: "Collection",
+        noArticleInCollection: "No articles in this collection",
+        noArticleInCollectionHint: "Add articles to this collection using article editing.",
+        uploadArticleTitle: "Add article",
+        uploadPdfLabel: "PDF file (optional)",
+        uploadArxivLabel: "arXiv URL/ID (optional)",
+        uploadArxivHint: "Without a PDF, the app automatically downloads the PDF from arXiv and fills bibliographic metadata.",
+        cancel: "Cancel",
+        editArticle: "Edit article",
+        title: "Title",
+        authorsCsv: "Authors (comma-separated)",
+        abstract: "Abstract",
+        year: "Year",
+        status: "Status",
+        discipline: "Discipline",
+        keywordsCsv: "Keywords (comma-separated)",
+        arxivRefetch: "arXiv ID/URL (for re-fetch)",
+        refetchArxiv: "Re-fetch arXiv",
+        save: "Save",
+        deleteConfirmTitle: "Delete this article?",
+        delete: "Delete",
+        read: "Read",
+        edit: "Edit",
+        open: "Open",
+        unknownAuthor: "Unknown author",
+        untitled: "Untitled",
+        statusNA: "status n/a",
+        statusToRead: "To read",
+        statusReading: "Reading",
+        statusRead: "Read",
+        statusReread: "To reread",
+        all: "All",
+        allFeminine: "All",
+        allCollectionsLabel: "All collections",
+        noDescription: "No description",
+        chooseStatus: "Change status",
+        noCollectionAvailable: "No collections",
+        resultLabelArticle: "article",
+        resultLabelArticles: "articles",
+        filteredCollection: "collection",
+        filteredStatus: "status",
+        filteredYears: "years",
+        toastLoadCollectionsError: "Error loading collections",
+        toastLoadArticlesError: "Error loading articles",
+        toastLoadCollectionArticlesError: "Error loading collection articles",
+        toastYearRangeIncomplete: "Please provide a complete range: start year and end year",
+        toastYearRangeInvalid: "Years must be integer numbers",
+        toastStatusUpdateFailed: "Unable to update status",
+        toastStatusUpdated: "Status updated",
+        toastCollectionsUpdateFailed: "Unable to update collections",
+        toastCollectionRemoved: "Removed from collection",
+        toastCollectionAdded: "Added to collection",
+        toastUploadNeedInput: "Select a PDF or provide an arXiv URL/ID",
+        toastUploadFailed: "Upload failed",
+        toastUploadSuccess: "Article added",
+        toastArxivRequired: "Provide an arXiv ID or URL",
+        toastArxivRefetchFailed: "arXiv re-fetch failed",
+        toastArxivRefetchSuccess: "arXiv metadata updated",
+        toastUpdateFailed: "Update failed",
+        toastUpdateSuccess: "Metadata updated",
+        toastDeleteFailed: "Delete failed",
+        toastDeleteSuccess: "Article deleted",
+        toastNeedSelection: "Select at least one article",
+        toastExportFailed: "BibTeX export failed",
+        toastExportSuccess: "BibTeX export completed",
+        toastCollectionNameRequired: "Collection name is required",
+        toastCollectionCreateFailed: "Unable to create collection",
+        toastCollectionCreateSuccess: "Collection created",
+    },
+};
+
+function getStoredLanguage() {
+    try {
+        const value = localStorage.getItem(LANG_STORAGE_KEY);
+        return SUPPORTED_LANGS.has(value) ? value : "fr";
+    } catch {
+        return "fr";
+    }
+}
+
+const currentLanguage = getStoredLanguage();
+
+function t(key, fallback = "") {
+    return translations[currentLanguage][key] ?? fallback;
+}
+
 const statusLabels = {
-    to_read: "A lire",
-    reading: "En cours",
-    read: "Lu",
-    to_reread: "A relire",
+    to_read: t("statusToRead", "A lire"),
+    reading: t("statusReading", "En cours"),
+    read: t("statusRead", "Lu"),
+    to_reread: t("statusReread", "A relire"),
 };
 
 const statusOptions = ["to_read", "reading", "read", "to_reread"];
@@ -32,6 +239,8 @@ const state = {
 };
 
 const dom = {
+    langFrBtn: document.getElementById("langFrBtn"),
+    langEnBtn: document.getElementById("langEnBtn"),
     searchInput: document.getElementById("searchInput"),
     articlesViewBtn: document.getElementById("articlesViewBtn"),
     collectionsViewBtn: document.getElementById("collectionsViewBtn"),
@@ -99,14 +308,111 @@ const dom = {
 init();
 
 function init() {
+    applyStaticTranslations();
+    highlightActiveLanguage();
     initQuickActionMenu();
     bindEvents();
     applyViewMode();
     refresh();
 }
 
+function setLanguage(lang) {
+    if (!SUPPORTED_LANGS.has(lang)) return;
+    try {
+        localStorage.setItem(LANG_STORAGE_KEY, lang);
+    } catch {
+        // Ignore storage failures and still reload.
+    }
+    window.location.reload();
+}
+
+function highlightActiveLanguage() {
+    if (dom.langFrBtn) dom.langFrBtn.classList.toggle("active", currentLanguage === "fr");
+    if (dom.langEnBtn) dom.langEnBtn.classList.toggle("active", currentLanguage === "en");
+}
+
+function applyStaticTranslations() {
+    const appLogo = document.querySelector(".app-logo");
+    if (appLogo) appLogo.textContent = t("appLogo", "Research Library");
+
+    dom.searchInput.placeholder = t("searchPlaceholder", dom.searchInput.placeholder);
+    dom.articlesViewBtn.textContent = t("viewArticles", dom.articlesViewBtn.textContent);
+    dom.collectionsViewBtn.textContent = t("viewCollections", dom.collectionsViewBtn.textContent);
+    dom.uploadBtn.textContent = t("addArticle", dom.uploadBtn.textContent);
+    dom.bulkBibtexBtn.textContent = t("exportSelected", dom.bulkBibtexBtn.textContent);
+    dom.clearFiltersBtn.textContent = t("resetFilters", dom.clearFiltersBtn.textContent);
+    dom.createCollectionBtn.textContent = t("create", dom.createCollectionBtn.textContent);
+    dom.newCollectionName.placeholder = t("newCollection", dom.newCollectionName.placeholder);
+    dom.newCollectionDescription.placeholder = t(
+        "newCollectionOptionalDescription",
+        dom.newCollectionDescription.placeholder
+    );
+    dom.applyYearRangeBtn.textContent = t("apply", dom.applyYearRangeBtn.textContent);
+    dom.clearYearRangeBtn.textContent = t("clear", dom.clearYearRangeBtn.textContent);
+    dom.yearRangeStart.placeholder = t("yearFrom", dom.yearRangeStart.placeholder);
+    dom.yearRangeEnd.placeholder = t("yearTo", dom.yearRangeEnd.placeholder);
+
+    const statusTitle = document.querySelector("#statusFilterGroup h3");
+    if (statusTitle) statusTitle.textContent = t("readingStatus", statusTitle.textContent);
+    const yearsTitle = document.querySelector("#yearFilterGroup h3");
+    if (yearsTitle) yearsTitle.textContent = t("years", yearsTitle.textContent);
+    const collectionsTitle = document.querySelector(".sidebar h3");
+    if (collectionsTitle) collectionsTitle.textContent = t("collections", collectionsTitle.textContent);
+
+    const uploadModalTitle = document.querySelector("#uploadModal h2");
+    if (uploadModalTitle) uploadModalTitle.textContent = t("uploadArticleTitle", uploadModalTitle.textContent);
+    const editModalTitle = document.querySelector("#editModal h2");
+    if (editModalTitle) editModalTitle.textContent = t("editArticle", editModalTitle.textContent);
+    const deleteModalTitle = document.querySelector("#deleteModal h2");
+    if (deleteModalTitle) deleteModalTitle.textContent = t("deleteConfirmTitle", deleteModalTitle.textContent);
+
+    const uploadFileLabel = document.querySelector("label[for='uploadFile']");
+    if (uploadFileLabel) uploadFileLabel.textContent = t("uploadPdfLabel", uploadFileLabel.textContent);
+    const uploadArxivLabel = document.querySelector("label[for='uploadArxiv']");
+    if (uploadArxivLabel) uploadArxivLabel.textContent = t("uploadArxivLabel", uploadArxivLabel.textContent);
+    const uploadHint = document.querySelector("#uploadArxiv + p");
+    if (uploadHint) uploadHint.textContent = t("uploadArxivHint", uploadHint.textContent);
+
+    const labelMap = [
+        ["editTitle", "title"],
+        ["editAuthors", "authorsCsv"],
+        ["editAbstract", "abstract"],
+        ["editYear", "year"],
+        ["editStatus", "status"],
+        ["editDiscipline", "discipline"],
+        ["editKeywords", "keywordsCsv"],
+        ["editArxiv", "arxivRefetch"],
+    ];
+    labelMap.forEach(([forId, key]) => {
+        const label = document.querySelector(`label[for='${forId}']`);
+        if (label) label.textContent = t(key, label.textContent);
+    });
+
+    dom.refetchArxivBtn.textContent = t("refetchArxiv", dom.refetchArxivBtn.textContent);
+    dom.cancelUploadBtn.textContent = t("cancel", dom.cancelUploadBtn.textContent);
+    dom.confirmUploadBtn.textContent = t("addArticle", dom.confirmUploadBtn.textContent);
+    dom.cancelEditBtn.textContent = t("cancel", dom.cancelEditBtn.textContent);
+    dom.saveEditBtn.textContent = t("save", dom.saveEditBtn.textContent);
+    dom.cancelDeleteBtn.textContent = t("cancel", dom.cancelDeleteBtn.textContent);
+    dom.confirmDeleteBtn.textContent = t("delete", dom.confirmDeleteBtn.textContent);
+
+    const statusSelect = dom.editStatus;
+    if (statusSelect && statusSelect.options.length >= 4) {
+        statusSelect.options[0].text = t("statusToRead", statusSelect.options[0].text);
+        statusSelect.options[1].text = t("statusReading", statusSelect.options[1].text);
+        statusSelect.options[2].text = t("statusRead", statusSelect.options[2].text);
+        statusSelect.options[3].text = t("statusReread", statusSelect.options[3].text);
+    }
+
+    dom.activeFilterLabel.textContent = t("allArticles", dom.activeFilterLabel.textContent);
+}
+
 function bindEvents() {
     let searchTimer;
+
+    if (dom.langFrBtn) dom.langFrBtn.addEventListener("click", () => setLanguage("fr"));
+    if (dom.langEnBtn) dom.langEnBtn.addEventListener("click", () => setLanguage("en"));
+
     dom.searchInput.addEventListener("input", () => {
         clearTimeout(searchTimer);
         searchTimer = setTimeout(() => {

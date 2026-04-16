@@ -29,12 +29,15 @@
             </small>
         </div>
         <div class="reader-controls">
+            <div class="lang-switch" aria-label="Language switch">
+                <button class="btn btn-secondary btn-sm" id="langFrBtn" type="button">FR</button>
+                <button class="btn btn-secondary btn-sm" id="langEnBtn" type="button">EN</button>
+            </div>
             <button class="btn btn-secondary btn-sm" id="prevBtn">Précédent</button>
             <button class="btn btn-secondary btn-sm" id="nextBtn">Suivant</button>
             <button class="btn btn-secondary btn-sm" id="zoomDown">-</button>
             <span class="page-info" id="zoomLabel">100%</span>
             <button class="btn btn-secondary btn-sm" id="zoomUp">+</button>
-            <button class="btn btn-secondary btn-sm" id="togglePanelBtn">Masquer panneau</button>
             <button class="btn btn-secondary btn-sm" id="exportMdBtn">Export Markdown</button>
             {% if article.arxiv_id %}
             <a
@@ -53,6 +56,13 @@
                 <div class="pdfViewer" id="pdfViewer"></div>
             </div>
         </section>
+        <button
+            class="panel-drawer-toggle"
+            id="panelDrawerToggle"
+            type="button"
+            aria-controls="readerPanel"
+            aria-expanded="true"
+        >Masquer panneau</button>
         <aside class="reader-panel" id="readerPanel">
             <div class="tabs">
                 <button class="tab active" data-tab="highlights" id="tabHighlights">Highlights</button>
