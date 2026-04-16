@@ -420,6 +420,27 @@ label { display: block; font-size: .8rem; color: var(--text-muted); margin-botto
 .reader-header .title small { color: var(--text-muted); display: block; font-weight: 400; font-size: .75rem; }
 .reader-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 
+.reader-mode-tools {
+    display: inline-flex;
+    gap: 4px;
+    padding: 2px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg-input);
+}
+
+.reader-mode-btn {
+    min-width: 30px;
+    padding: 5px 8px;
+    line-height: 1;
+}
+
+.reader-mode-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #04101d;
+}
+
 .reader-header .lang-switch {
     position: absolute;
     top: 10px;
@@ -476,6 +497,24 @@ label { display: block; font-size: .8rem; color: var(--text-muted); margin-botto
     inset: 0;
     overflow: auto;
     padding: 14px;
+}
+
+.reader-main.mode-pan .pdf-viewport {
+    cursor: grab;
+}
+
+.reader-main.mode-pan .pdf-viewport.panning {
+    cursor: grabbing;
+}
+
+.reader-main.mode-pan .textLayer,
+.reader-main.mode-pan .textLayer * {
+    user-select: none;
+}
+
+.reader-main.mode-note .pdf-viewport,
+.reader-main.mode-note .textLayer {
+    cursor: crosshair;
 }
 
 .pdf-viewport .pdfViewer {

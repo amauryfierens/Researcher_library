@@ -13,6 +13,9 @@ const translations = {
         next: "Suivant",
         hidePanel: "Masquer panneau",
         showPanel: "Afficher panneau",
+        modeSelect: "Mode selection",
+        modePan: "Mode deplacement",
+        modeNote: "Mode note",
         exportMarkdown: "Export Markdown",
         viewOnArxivisual: "Voir sur arxivisual",
         highlights: "Highlights",
@@ -59,6 +62,9 @@ const translations = {
         next: "Next",
         hidePanel: "Hide panel",
         showPanel: "Show panel",
+        modeSelect: "Selection mode",
+        modePan: "Pan mode",
+        modeNote: "Note mode",
         exportMarkdown: "Export Markdown",
         viewOnArxivisual: "View on arxivisual",
         highlights: "Highlights",
@@ -133,6 +139,12 @@ const state = {
     pendingHighlightEdit: null,
     pendingNote: null,
     panelOpen: true,
+    interactionMode: "select",
+    isPanning: false,
+    panStartX: 0,
+    panStartY: 0,
+    panScrollLeft: 0,
+    panScrollTop: 0,
     views: new Map(),
 };
 
@@ -147,6 +159,9 @@ const dom = {
     pageInfo: document.getElementById("pageInfo"),
     prevBtn: document.getElementById("prevBtn"),
     nextBtn: document.getElementById("nextBtn"),
+    selectModeBtn: document.getElementById("selectModeBtn"),
+    panModeBtn: document.getElementById("panModeBtn"),
+    noteModeBtn: document.getElementById("noteModeBtn"),
     zoomDown: document.getElementById("zoomDown"),
     zoomUp: document.getElementById("zoomUp"),
     panelDrawerToggle: document.getElementById("panelDrawerToggle"),
@@ -182,6 +197,7 @@ async function init() {
     restorePanelPreference();
     applyPanelVisibility();
     bindEvents();
+    applyInteractionMode();
     await loadAnnotations();
     await loadPdf();
 }
@@ -201,6 +217,46 @@ function setLanguage(lang) {
     refreshPageUi();
     renderDashboard();
     refreshPopoverLabels();
+}
+
+function setInteractionMode(mode) {
+    if (!["select", "pan", "note"].includes(mode) || mode === state.interactionMode) return;
+
+    state.interactionMode = mode;
+    state.isPanning = false;
+    dom.pdfViewport.classList.remove("panning");
+
+    if (mode !== "select") {
+        clearSelectionUi();
+    }
+    if (mode !== "note") {
+        closeNotePopover();
+    }
+
+    applyInteractionMode();
+}
+
+function applyInteractionMode() {
+    const isSelect = state.interactionMode === "select";
+    const isPan = state.interactionMode === "pan";
+    const isNote = state.interactionMode === "note";
+
+    dom.readerMain.classList.toggle("mode-select", isSelect);
+    dom.readerMain.classList.toggle("mode-pan", isPan);
+    dom.readerMain.classList.toggle("mode-note", isNote);
+
+    if (dom.selectModeBtn) {
+        dom.selectModeBtn.classList.toggle("active", isSelect);
+        dom.selectModeBtn.setAttribute("aria-pressed", isSelect ? "true" : "false");
+    }
+    if (dom.panModeBtn) {
+        dom.panModeBtn.classList.toggle("active", isPan);
+        dom.panModeBtn.setAttribute("aria-pressed", isPan ? "true" : "false");
+    }
+    if (dom.noteModeBtn) {
+        dom.noteModeBtn.classList.toggle("active", isNote);
+        dom.noteModeBtn.setAttribute("aria-pressed", isNote ? "true" : "false");
+    }
 }
 
 function refreshPopoverLabels() {
@@ -225,6 +281,23 @@ function applyStaticTranslations() {
 
     dom.prevBtn.textContent = t("prev", dom.prevBtn.textContent);
     dom.nextBtn.textContent = t("next", dom.nextBtn.textContent);
+
+    if (dom.selectModeBtn) {
+        const label = t("modeSelect", "Selection mode");
+        dom.selectModeBtn.title = label;
+        dom.selectModeBtn.setAttribute("aria-label", label);
+    }
+    if (dom.panModeBtn) {
+        const label = t("modePan", "Pan mode");
+        dom.panModeBtn.title = label;
+        dom.panModeBtn.setAttribute("aria-label", label);
+    }
+    if (dom.noteModeBtn) {
+        const label = t("modeNote", "Note mode");
+        dom.noteModeBtn.title = label;
+        dom.noteModeBtn.setAttribute("aria-label", label);
+    }
+
     dom.exportMdBtn.textContent = t("exportMarkdown", dom.exportMdBtn.textContent);
     dom.tabHighlights.textContent = t("highlights", dom.tabHighlights.textContent);
     dom.tabNotes.textContent = t("notes", dom.tabNotes.textContent);
@@ -260,6 +333,9 @@ function bindEvents() {
 
     dom.prevBtn.addEventListener("click", () => goToPage(state.pageNumber - 1));
     dom.nextBtn.addEventListener("click", () => goToPage(state.pageNumber + 1));
+    if (dom.selectModeBtn) dom.selectModeBtn.addEventListener("click", () => setInteractionMode("select"));
+    if (dom.panModeBtn) dom.panModeBtn.addEventListener("click", () => setInteractionMode("pan"));
+    if (dom.noteModeBtn) dom.noteModeBtn.addEventListener("click", () => setInteractionMode("note"));
     dom.zoomDown.addEventListener("click", () => { void setZoom(state.zoom - 0.1); });
     dom.zoomUp.addEventListener("click", () => { void setZoom(state.zoom + 0.1); });
     if (dom.panelDrawerToggle) {
@@ -322,6 +398,44 @@ function bindEvents() {
 
     document.addEventListener("wheel", handleReaderWheelZoom, { passive: false });
     document.addEventListener("keydown", handleReaderKeydown);
+
+    dom.pdfViewport.addEventListener("mousedown", handlePanStart);
+    window.addEventListener("mousemove", handlePanMove);
+    window.addEventListener("mouseup", handlePanEnd);
+}
+
+function handlePanStart(event) {
+    if (state.interactionMode !== "pan") return;
+    if (event.button !== 0) return;
+
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+    if (target.closest(".note-pin, .highlight, .hl-popover, .note-popover, button, input, textarea")) {
+        return;
+    }
+
+    state.isPanning = true;
+    state.panStartX = event.clientX;
+    state.panStartY = event.clientY;
+    state.panScrollLeft = dom.pdfViewport.scrollLeft;
+    state.panScrollTop = dom.pdfViewport.scrollTop;
+    dom.pdfViewport.classList.add("panning");
+    event.preventDefault();
+}
+
+function handlePanMove(event) {
+    if (!state.isPanning || state.interactionMode !== "pan") return;
+
+    const dx = event.clientX - state.panStartX;
+    const dy = event.clientY - state.panStartY;
+    dom.pdfViewport.scrollLeft = state.panScrollLeft - dx;
+    dom.pdfViewport.scrollTop = state.panScrollTop - dy;
+}
+
+function handlePanEnd() {
+    if (!state.isPanning) return;
+    state.isPanning = false;
+    dom.pdfViewport.classList.remove("panning");
 }
 
 function restorePanelPreference() {
@@ -554,6 +668,7 @@ function refreshSinglePageView(pageNumber) {
         pageNode.dataset.readerBound = "1";
 
         pageNode.addEventListener("mouseup", (event) => {
+            if (state.interactionMode !== "select") return;
             const target = event.target;
             if (!(target instanceof HTMLElement)) return;
             if (!target.closest(".textLayer")) return;
@@ -593,6 +708,22 @@ function refreshSinglePageView(pageNumber) {
                         highlight,
                     });
                 }
+                return;
+            }
+
+            if (state.interactionMode === "pan") {
+                return;
+            }
+
+            if (state.interactionMode === "select") {
+                const selection = window.getSelection();
+                if (selection && !selection.isCollapsed && selection.toString().trim()) {
+                    return;
+                }
+                return;
+            }
+
+            if (state.interactionMode !== "note") {
                 return;
             }
 
