@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+
+{% block title %}Bibliothèque scientifique{% endblock %}
+
+{% block body %}
+<header class="app-header">
+    <div class="app-header-inner">
+        <div class="app-logo">Research Library</div>
+        <div class="app-search">
+            <input id="searchInput" type="text" placeholder="Rechercher (titre, auteurs, DOI, arXiv, texte intégral)...">
+        </div>
+        <div class="app-view-switch" role="tablist" aria-label="Mode de navigation">
+            <button class="view-switch-btn active" id="articlesViewBtn" type="button">Vue articles</button>
+            <button class="view-switch-btn" id="collectionsViewBtn" type="button">Vue collections</button>
+        </div>
+        <div class="app-actions">
+            <button class="btn btn-primary" id="uploadBtn">Ajouter un article</button>
+            <button class="btn btn-secondary" id="bulkBibtexBtn">Exporter BibTeX sélection</button>
+            <button class="btn btn-secondary" id="clearFiltersBtn">Réinitialiser filtres</button>
+        </div>
+    </div>
+</header>
+
+<div class="app-container with-sidebar">
+    <aside class="sidebar">
+        <h3>Collections</h3>
+        <ul class="sidebar-list" id="collectionList"></ul>
+        <div class="sidebar-form">
+            <input id="newCollectionName" placeholder="Nouvelle collection">
+            <input id="newCollectionDescription" placeholder="Description (optionnel)">
+            <button class="btn btn-secondary btn-sm" id="createCollectionBtn">Créer</button>
+        </div>
+
+        <div id="statusFilterGroup">
+            <h3>Statut de lecture</h3>
+            <ul class="sidebar-list" id="statusList"></ul>
+        </div>
+
+        <div id="yearFilterGroup">
+            <h3>Années</h3>
+            <ul class="sidebar-list" id="yearList"></ul>
+            <div class="year-range-controls">
+                <div class="year-range-row">
+                    <input id="yearRangeStart" type="number" min="1900" max="2100" placeholder="De">
+                    <input id="yearRangeEnd" type="number" min="1900" max="2100" placeholder="A">
+                </div>
+                <div class="year-range-row">
+                    <button class="btn btn-secondary btn-sm" id="applyYearRangeBtn" type="button">Appliquer</button>
+                    <button class="btn btn-secondary btn-sm" id="clearYearRangeBtn" type="button">Effacer</button>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <main>
+        <section id="articlesViewSection">
+            <div class="results-bar">
+                <span id="resultCount">0 article</span>
+                <span class="muted" id="activeFilterLabel">Tous les articles</span>
+            </div>
+            <section class="article-grid" id="articleGrid"></section>
+            <section id="emptyState" class="empty-card" style="display:none;">
+                <h2>Aucun article</h2>
+                <p>Ajoutez un PDF et, optionnellement, une URL/ID arXiv pour auto-remplir les métadonnées.</p>
+            </section>
+        </section>
+
+        <section id="collectionsViewSection" style="display:none;">
+            <div id="collectionsBrowser" class="collections-view-browser">
+                <section class="collection-grid" id="collectionsGrid"></section>
+                <section id="collectionsEmptyState" class="empty-card" style="display:none;">
+                    <h2>Aucune collection</h2>
+                    <p>Créez une collection depuis la barre latérale pour organiser votre bibliothèque.</p>
+                </section>
+            </div>
+
+            <div id="collectionDetailView" style="display:none;">
+                <div class="collection-detail-head">
+                    <button class="btn btn-secondary btn-sm" id="backToCollectionsBtn">Retour aux collections</button>
+                    <div>
+                        <h2 id="collectionDetailTitle">Collection</h2>
+                        <p class="muted" id="collectionDetailMeta"></p>
+                    </div>
+                </div>
+                <section class="article-grid" id="collectionArticleGrid"></section>
+                <section id="collectionArticlesEmptyState" class="empty-card" style="display:none;">
+                    <h2>Aucun article dans cette collection</h2>
+                    <p>Ajoutez des articles à cette collection via l'édition d'un article.</p>
+                </section>
+            </div>
+        </section>
+    </main>
+</div>
+
+<div class="modal-overlay" id="uploadModal" aria-hidden="true">
+    <div class="modal">
+        <h2>Ajouter un article</h2>
+        <div class="form-row">
+            <label for="uploadFile">Fichier PDF (optionnel)</label>
+            <input id="uploadFile" type="file" accept=".pdf">
+        </div>
+        <div class="form-row">
+            <label for="uploadArxiv">URL/ID arXiv (optionnel)</label>
+            <input id="uploadArxiv" placeholder="ex: https://arxiv.org/abs/2401.12345">
+            <p class="muted">Sans PDF, l'application télécharge automatiquement le PDF depuis arXiv et remplit les métadonnées bibliographiques.</p>
+        </div>
+        <div class="form-actions">
+            <button class="btn btn-secondary" id="cancelUploadBtn">Annuler</button>
+            <button class="btn btn-primary" id="confirmUploadBtn">Ajouter</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="editModal" aria-hidden="true">
+    <div class="modal">
+        <h2>Modifier l'article</h2>
+        <div class="form-row">
+            <label for="editTitle">Titre</label>
+            <input id="editTitle">
+        </div>
+        <div class="form-row">
+            <label for="editAuthors">Auteurs (séparés par virgule)</label>
+            <input id="editAuthors" placeholder="Doe, Jane, Smith, John">
+        </div>
+        <div class="form-row">
+            <label for="editAbstract">Résumé</label>
+            <textarea id="editAbstract"></textarea>
+        </div>
+        <div class="form-row form-row-2">
+            <div>
+                <label for="editYear">Année</label>
+                <input id="editYear" type="number" min="1900" max="2100">
+            </div>
+            <div>
+                <label for="editStatus">Statut</label>
+                <select id="editStatus">
+                    <option value="to_read">À lire</option>
+                    <option value="reading">En cours</option>
+                    <option value="read">Lu</option>
+                    <option value="to_reread">À relire</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-row form-row-2">
+            <div>
+                <label for="editDiscipline">Discipline</label>
+                <input id="editDiscipline">
+            </div>
+            <div>
+                <label for="editDoi">DOI</label>
+                <input id="editDoi">
+            </div>
+        </div>
+        <div class="form-row form-row-2">
+            <div>
+                <label for="editJournal">Journal</label>
+                <input id="editJournal">
+            </div>
+            <div>
+                <label for="editVenue">Venue</label>
+                <input id="editVenue">
+            </div>
+        </div>
+        <div class="form-row">
+            <label for="editKeywords">Mots-clés (séparés par virgule)</label>
+            <input id="editKeywords">
+        </div>
+        <div class="form-row">
+            <label for="editArxiv">arXiv ID/URL (pour re-fetch)</label>
+            <input id="editArxiv" placeholder="ex: 2401.12345">
+            <div class="inline-actions">
+                <button class="btn btn-secondary btn-sm" id="refetchArxivBtn">Re-fetch arXiv</button>
+            </div>
+        </div>
+        <div class="form-row">
+            <label>Collections</label>
+            <div id="editCollections" class="checkbox-list"></div>
+        </div>
+        <div class="form-actions">
+            <button class="btn btn-secondary" id="cancelEditBtn">Annuler</button>
+            <button class="btn btn-primary" id="saveEditBtn">Enregistrer</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="deleteModal" aria-hidden="true">
+    <div class="modal">
+        <h2>Supprimer cet article ?</h2>
+        <p id="deleteLabel"></p>
+        <div class="form-actions">
+            <button class="btn btn-secondary" id="cancelDeleteBtn">Annuler</button>
+            <button class="btn btn-danger" id="confirmDeleteBtn">Supprimer</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    window.ARXIVISUAL_TEMPLATE = {{ arxivisual_template | tojson }};
+</script>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/library.js') }}"></script>
+{% endblock %}

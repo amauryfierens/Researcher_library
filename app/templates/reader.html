@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block title %}{{ article.title }} - Lecteur PDF{% endblock %}
+
+{% block head %}
+<link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf_viewer.min.css"
+>
+{% endblock %}
+
+{% block body %}
+<div class="reader-container">
+    <header class="reader-header">
+        <a href="/" class="btn btn-secondary btn-sm">Retour bibliothèque</a>
+        <div class="title">
+            {{ article.title }}
+            <small>
+                {% if article.authors %}
+                    {% if article.authors|length > 3 %}
+                        {{ article.authors[:3] | join(', ') }} et al.
+                    {% else %}
+                        {{ article.authors | join(', ') }}
+                    {% endif %}
+                {% else %}
+                    Auteur inconnu
+                {% endif %}
+                {% if article.year %} • {{ article.year }}{% endif %}
+            </small>
+        </div>
+        <div class="reader-controls">
+            <button class="btn btn-secondary btn-sm" id="prevBtn">Précédent</button>
+            <button class="btn btn-secondary btn-sm" id="nextBtn">Suivant</button>
+            <button class="btn btn-secondary btn-sm" id="zoomDown">-</button>
+            <span class="page-info" id="zoomLabel">100%</span>
+            <button class="btn btn-secondary btn-sm" id="zoomUp">+</button>
+            <button class="btn btn-secondary btn-sm" id="exportMdBtn">Export Markdown</button>
+            {% if article.arxiv_id %}
+            <a
+                class="btn btn-secondary btn-sm"
+                href="{{ arxivisual_template.replace('{id}', article.arxiv_id) }}"
+                target="_blank"
+                rel="noopener noreferrer"
+            >Voir sur arxivisual</a>
+            {% endif %}
+        </div>
+    </header>
+
+    <div class="reader-main" id="readerMain">
+        <section class="pdf-viewport-shell">
+            <div class="pdf-viewport" id="pdfViewport">
+                <div class="pdfViewer" id="pdfViewer"></div>
+            </div>
+        </section>
+        <aside class="reader-panel" id="readerPanel">
+            <div class="tabs">
+                <button class="tab active" data-tab="highlights" id="tabHighlights">Highlights</button>
+                <button class="tab" data-tab="notes" id="tabNotes">Notes</button>
+            </div>
+            <ul class="annot-list" id="highlightsList"></ul>
+            <ul class="annot-list" id="notesList" style="display:none;"></ul>
+        </aside>
+    </div>
+</div>
+
+<div class="hl-popover" id="hlPopover" style="display:none;">
+    <button class="color-btn" data-color="yellow" title="Jaune"></button>
+    <button class="color-btn" data-color="green" title="Vert"></button>
+    <button class="color-btn" data-color="red" title="Rouge"></button>
+    <button class="color-btn" data-color="blue" title="Bleu"></button>
+    <input id="hlNoteInput" placeholder="Note (optionnel)">
+    <button class="btn btn-secondary btn-sm" id="citeBtn">Citer</button>
+    <button class="btn btn-danger btn-sm" id="deleteHighlightBtn" style="display:none;">Supprimer</button>
+    <button class="btn btn-primary btn-sm" id="saveHighlightBtn">Surligner</button>
+    <button class="btn btn-secondary btn-sm" id="cancelHighlightBtn">Annuler</button>
+</div>
+
+<div class="note-popover" id="notePopover" style="display:none;">
+    <textarea id="noteBodyInput" placeholder="Votre note..."></textarea>
+    <div class="row">
+        <button class="btn btn-danger btn-sm" id="deleteNoteBtn" style="display:none;">Supprimer</button>
+        <button class="btn btn-secondary btn-sm" id="cancelNoteBtn">Annuler</button>
+        <button class="btn btn-primary btn-sm" id="saveNoteBtn">Enregistrer</button>
+    </div>
+</div>
+
+<script>
+    window.ARTICLE_DATA = {{ article | tojson }};
+</script>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/reader.js') }}" type="module"></script>
+{% endblock %}
