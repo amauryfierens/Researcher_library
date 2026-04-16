@@ -1,6 +1,7 @@
 import { copyCitation, truncate } from "./annotations.js";
 
 const article = window.ARTICLE_DATA;
+const READER_PANEL_STORAGE_KEY = "readerPanelOpen";
 
 const state = {
     pdfjs: null,
@@ -19,11 +20,14 @@ const state = {
     pendingSelection: null,
     pendingHighlightEdit: null,
     pendingNote: null,
+    panelOpen: true,
     views: new Map(),
 };
 
 const dom = {
     readerContainer: document.querySelector(".reader-container"),
+    readerMain: document.getElementById("readerMain"),
+    readerPanel: document.getElementById("readerPanel"),
     pdfViewport: document.getElementById("pdfViewport"),
     pdfViewer: document.getElementById("pdfViewer"),
     pageInfo: document.getElementById("pageInfo"),
@@ -31,6 +35,7 @@ const dom = {
     nextBtn: document.getElementById("nextBtn"),
     zoomDown: document.getElementById("zoomDown"),
     zoomUp: document.getElementById("zoomUp"),
+    togglePanelBtn: document.getElementById("togglePanelBtn"),
     zoomLabel: document.getElementById("zoomLabel"),
     pageSlider: document.getElementById("pageSlider"),
     exportMdBtn: document.getElementById("exportMdBtn"),
@@ -58,6 +63,8 @@ const dom = {
 init();
 
 async function init() {
+    restorePanelPreference();
+    applyPanelVisibility();
     bindEvents();
     await loadAnnotations();
     await loadPdf();
@@ -68,6 +75,7 @@ function bindEvents() {
     dom.nextBtn.addEventListener("click", () => goToPage(state.pageNumber + 1));
     dom.zoomDown.addEventListener("click", () => { void setZoom(state.zoom - 0.1); });
     dom.zoomUp.addEventListener("click", () => { void setZoom(state.zoom + 0.1); });
+    dom.togglePanelBtn.addEventListener("click", togglePanelVisibility);
 
     if (dom.pageSlider) {
         dom.pageSlider.addEventListener("input", () => {
@@ -125,6 +133,37 @@ function bindEvents() {
 
     document.addEventListener("wheel", handleReaderWheelZoom, { passive: false });
     document.addEventListener("keydown", handleReaderKeydown);
+}
+
+function restorePanelPreference() {
+    try {
+        const value = localStorage.getItem(READER_PANEL_STORAGE_KEY);
+        if (value === "0") state.panelOpen = false;
+        if (value === "1") state.panelOpen = true;
+    } catch {
+        state.panelOpen = true;
+    }
+}
+
+function savePanelPreference() {
+    try {
+        localStorage.setItem(READER_PANEL_STORAGE_KEY, state.panelOpen ? "1" : "0");
+    } catch {
+        // Ignore storage write failures (private mode, blocked storage, etc.)
+    }
+}
+
+function applyPanelVisibility() {
+    dom.readerMain.classList.toggle("no-panel", !state.panelOpen);
+    dom.readerPanel.style.display = state.panelOpen ? "block" : "none";
+    dom.togglePanelBtn.textContent = state.panelOpen ? "Masquer panneau" : "Afficher panneau";
+    dom.togglePanelBtn.setAttribute("aria-expanded", state.panelOpen ? "true" : "false");
+}
+
+function togglePanelVisibility() {
+    state.panelOpen = !state.panelOpen;
+    applyPanelVisibility();
+    savePanelPreference();
 }
 
 function isEditableTarget(target) {

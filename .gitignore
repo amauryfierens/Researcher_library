@@ -52,5 +52,5 @@ desktop.ini
 .env
 .env.local
 
-# LLM isntructions
+# LLM instructions
 CLAUDE.md

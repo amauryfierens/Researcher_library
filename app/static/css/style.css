@@ -395,6 +395,7 @@ label { display: block; font-size: .8rem; color: var(--text-muted); margin-botto
     height: calc(100vh - 60px);
 }
 .reader-main.no-panel { grid-template-columns: 1fr; }
+.reader-main.no-panel .reader-panel { display: none; }
 
 .pdf-viewport-shell {
     position: relative;
