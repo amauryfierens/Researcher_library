@@ -2,6 +2,118 @@ import { copyCitation, truncate } from "./annotations.js";
 
 const article = window.ARTICLE_DATA;
 const READER_PANEL_STORAGE_KEY = "readerPanelOpen";
+const LANG_STORAGE_KEY = "siteLang";
+const SUPPORTED_LANGS = new Set(["fr", "en"]);
+
+const translations = {
+    fr: {
+        readerPageTitle: "Lecteur PDF",
+        backToLibrary: "Retour bibliothèque",
+        prev: "Précédent",
+        next: "Suivant",
+        hidePanel: "Masquer panneau",
+        showPanel: "Afficher panneau",
+        exportMarkdown: "Export Markdown",
+        viewOnArxivisual: "Voir sur arxivisual",
+        highlights: "Highlights",
+        notes: "Notes",
+        optionalNote: "Note (optionnel)",
+        yourNote: "Votre note...",
+        cite: "Citer",
+        delete: "Supprimer",
+        cancel: "Annuler",
+        save: "Enregistrer",
+        highlight: "Surligner",
+        update: "Mettre a jour",
+        unknownAuthor: "Auteur inconnu",
+        page: "Page",
+        copiedCitation: "Citation copiée",
+        toastPdfLoadError: "Erreur chargement PDF",
+        toastAnnotationsLoadError: "Erreur chargement annotations",
+        toastHighlightUpdateError: "Erreur mise a jour highlight",
+        toastHighlightAddError: "Erreur ajout highlight",
+        toastHighlightUpdated: "Highlight mis a jour",
+        toastHighlightAdded: "Highlight ajouté",
+        toastHighlightAndNoteAdded: "Highlight et note ajoutés",
+        toastNoteRequired: "Le texte de la note est requis",
+        toastNoteError: "Erreur note",
+        toastNoteAdded: "Note ajoutée",
+        toastNoteUpdated: "Note mise à jour",
+        toastNoteDeleted: "Note supprimée",
+        toastDeleteNoteError: "Erreur suppression note",
+        toastDeleteHighlightError: "Erreur suppression highlight",
+        toastHighlightDeleted: "Highlight supprimé",
+        noHighlights: "Aucun highlight",
+        noNotes: "Aucune note",
+        apiError: "Erreur API",
+        highlightFallbackTitle: "Highlight",
+        colorYellow: "Jaune",
+        colorGreen: "Vert",
+        colorRed: "Rouge",
+        colorBlue: "Bleu",
+    },
+    en: {
+        readerPageTitle: "PDF Reader",
+        backToLibrary: "Back to library",
+        prev: "Previous",
+        next: "Next",
+        hidePanel: "Hide panel",
+        showPanel: "Show panel",
+        exportMarkdown: "Export Markdown",
+        viewOnArxivisual: "View on arxivisual",
+        highlights: "Highlights",
+        notes: "Notes",
+        optionalNote: "Note (optional)",
+        yourNote: "Your note...",
+        cite: "Cite",
+        delete: "Delete",
+        cancel: "Cancel",
+        save: "Save",
+        highlight: "Highlight",
+        update: "Update",
+        unknownAuthor: "Unknown author",
+        page: "Page",
+        copiedCitation: "Citation copied",
+        toastPdfLoadError: "Error loading PDF",
+        toastAnnotationsLoadError: "Error loading annotations",
+        toastHighlightUpdateError: "Error updating highlight",
+        toastHighlightAddError: "Error adding highlight",
+        toastHighlightUpdated: "Highlight updated",
+        toastHighlightAdded: "Highlight added",
+        toastHighlightAndNoteAdded: "Highlight and note added",
+        toastNoteRequired: "Note text is required",
+        toastNoteError: "Note error",
+        toastNoteAdded: "Note added",
+        toastNoteUpdated: "Note updated",
+        toastNoteDeleted: "Note deleted",
+        toastDeleteNoteError: "Error deleting note",
+        toastDeleteHighlightError: "Error deleting highlight",
+        toastHighlightDeleted: "Highlight deleted",
+        noHighlights: "No highlights",
+        noNotes: "No notes",
+        apiError: "API error",
+        highlightFallbackTitle: "Highlight",
+        colorYellow: "Yellow",
+        colorGreen: "Green",
+        colorRed: "Red",
+        colorBlue: "Blue",
+    },
+};
+
+function getStoredLanguage() {
+    try {
+        const value = localStorage.getItem(LANG_STORAGE_KEY);
+        return SUPPORTED_LANGS.has(value) ? value : "fr";
+    } catch {
+        return "fr";
+    }
+}
+
+const currentLanguage = getStoredLanguage();
+
+function t(key, fallback = "") {
+    return translations[currentLanguage][key] ?? fallback;
+}
 
 const state = {
     pdfjs: null,
@@ -25,6 +137,8 @@ const state = {
 };
 
 const dom = {
+    langFrBtn: document.getElementById("langFrBtn"),
+    langEnBtn: document.getElementById("langEnBtn"),
     readerContainer: document.querySelector(".reader-container"),
     readerMain: document.getElementById("readerMain"),
     readerPanel: document.getElementById("readerPanel"),
@@ -63,6 +177,8 @@ const dom = {
 init();
 
 async function init() {
+    applyStaticTranslations();
+    highlightActiveLanguage();
     restorePanelPreference();
     applyPanelVisibility();
     bindEvents();
@@ -70,7 +186,63 @@ async function init() {
     await loadPdf();
 }
 
+function setLanguage(lang) {
+    if (!SUPPORTED_LANGS.has(lang)) return;
+    try {
+        localStorage.setItem(LANG_STORAGE_KEY, lang);
+    } catch {
+        // Ignore storage failures and still reload.
+    }
+    window.location.reload();
+}
+
+function highlightActiveLanguage() {
+    if (dom.langFrBtn) dom.langFrBtn.classList.toggle("active", currentLanguage === "fr");
+    if (dom.langEnBtn) dom.langEnBtn.classList.toggle("active", currentLanguage === "en");
+}
+
+function applyStaticTranslations() {
+    document.documentElement.lang = currentLanguage;
+    document.title = `${article.title} - ${t("readerPageTitle", "PDF Reader")}`;
+
+    const backLink = document.querySelector(".reader-header > a");
+    if (backLink) backLink.textContent = t("backToLibrary", backLink.textContent);
+
+    dom.prevBtn.textContent = t("prev", dom.prevBtn.textContent);
+    dom.nextBtn.textContent = t("next", dom.nextBtn.textContent);
+    dom.exportMdBtn.textContent = t("exportMarkdown", dom.exportMdBtn.textContent);
+    dom.tabHighlights.textContent = t("highlights", dom.tabHighlights.textContent);
+    dom.tabNotes.textContent = t("notes", dom.tabNotes.textContent);
+    dom.hlNoteInput.placeholder = t("optionalNote", dom.hlNoteInput.placeholder);
+    dom.noteBodyInput.placeholder = t("yourNote", dom.noteBodyInput.placeholder);
+    dom.citeBtn.textContent = t("cite", dom.citeBtn.textContent);
+    dom.deleteHighlightBtn.textContent = t("delete", dom.deleteHighlightBtn.textContent);
+    dom.cancelHighlightBtn.textContent = t("cancel", dom.cancelHighlightBtn.textContent);
+    dom.saveHighlightBtn.textContent = t("highlight", dom.saveHighlightBtn.textContent);
+    dom.deleteNoteBtn.textContent = t("delete", dom.deleteNoteBtn.textContent);
+    dom.cancelNoteBtn.textContent = t("cancel", dom.cancelNoteBtn.textContent);
+    dom.saveNoteBtn.textContent = t("save", dom.saveNoteBtn.textContent);
+
+    const colorTitleKeys = ["colorYellow", "colorGreen", "colorRed", "colorBlue"];
+    dom.colorButtons.forEach((button, index) => {
+        const key = colorTitleKeys[index];
+        if (key) button.title = t(key, button.title);
+    });
+
+    const arxivLink = document.querySelector(".reader-controls a[rel='noopener noreferrer']");
+    if (arxivLink) arxivLink.textContent = t("viewOnArxivisual", arxivLink.textContent);
+
+    const authorLine = document.querySelector(".reader-header .title small");
+    if (authorLine && (!article.authors || !article.authors.length)) {
+        const yearSuffix = article.year ? ` • ${article.year}` : "";
+        authorLine.textContent = `${t("unknownAuthor", "Unknown author")}${yearSuffix}`;
+    }
+}
+
 function bindEvents() {
+    if (dom.langFrBtn) dom.langFrBtn.addEventListener("click", () => setLanguage("fr"));
+    if (dom.langEnBtn) dom.langEnBtn.addEventListener("click", () => setLanguage("en"));
+
     dom.prevBtn.addEventListener("click", () => goToPage(state.pageNumber - 1));
     dom.nextBtn.addEventListener("click", () => goToPage(state.pageNumber + 1));
     dom.zoomDown.addEventListener("click", () => { void setZoom(state.zoom - 0.1); });
@@ -158,7 +330,9 @@ function savePanelPreference() {
 function applyPanelVisibility() {
     dom.readerMain.classList.toggle("no-panel", !state.panelOpen);
     if (dom.panelDrawerToggle) {
-        dom.panelDrawerToggle.textContent = state.panelOpen ? "Masquer panneau" : "Afficher panneau";
+        dom.panelDrawerToggle.textContent = state.panelOpen
+            ? t("hidePanel", "Hide panel")
+            : t("showPanel", "Show panel");
         dom.panelDrawerToggle.setAttribute("aria-expanded", state.panelOpen ? "true" : "false");
     }
 }
@@ -281,7 +455,7 @@ async function loadPdf() {
         refreshPageUi();
     } catch (err) {
         console.error("PDF viewer initialization failed", err);
-        toast("Erreur chargement PDF", "error");
+        toast(t("toastPdfLoadError", "Error loading PDF"), "error");
     }
 }
 
@@ -445,7 +619,7 @@ async function loadAnnotations() {
         renderDashboard();
         renderAnnotationsOnAllPages();
     } catch (err) {
-        toast(err.message || "Erreur chargement annotations", "error");
+        toast(err.message || t("toastAnnotationsLoadError", "Error loading annotations"), "error");
     }
 }
 
@@ -513,7 +687,7 @@ function openHighlightPopover(clientX, clientY, payload) {
     dom.hlPopover.style.top = `${Math.max(12, clientY - 64)}px`;
     dom.deleteHighlightBtn.style.display = isEdit ? "inline-flex" : "none";
     dom.citeBtn.style.display = isEdit ? "none" : "inline-flex";
-    dom.saveHighlightBtn.textContent = isEdit ? "Mettre a jour" : "Surligner";
+    dom.saveHighlightBtn.textContent = isEdit ? t("update", "Update") : t("highlight", "Highlight");
 
     if (isEdit) {
         dom.hlNoteInput.value = payload.highlight.note || "";
@@ -530,7 +704,7 @@ function clearSelectionUi() {
     dom.hlPopover.style.display = "none";
     dom.deleteHighlightBtn.style.display = "none";
     dom.citeBtn.style.display = "inline-flex";
-    dom.saveHighlightBtn.textContent = "Surligner";
+    dom.saveHighlightBtn.textContent = t("highlight", "Highlight");
     dom.hlNoteInput.value = "";
     const selection = window.getSelection();
     if (selection) selection.removeAllRanges();
@@ -559,7 +733,7 @@ async function citePendingSelection() {
     if (!state.pendingSelection) return;
     const result = await copyCitation(state.pendingSelection.text_content, article);
     if (result.ok) {
-        toast("Citation copiée", "success");
+        toast(t("copiedCitation", "Citation copied"), "success");
     }
 }
 
@@ -576,9 +750,9 @@ async function savePendingHighlight() {
             });
             clearSelectionUi();
             await loadAnnotations();
-            toast("Highlight mis a jour", "success");
+            toast(t("toastHighlightUpdated", "Highlight updated"), "success");
         } catch (err) {
-            toast(err.message || "Erreur mise a jour highlight", "error");
+            toast(err.message || t("toastHighlightUpdateError", "Error updating highlight"), "error");
         }
         return;
     }
@@ -620,9 +794,14 @@ async function savePendingHighlight() {
 
         clearSelectionUi();
         await loadAnnotations();
-        toast(noteBody ? "Highlight et note ajoutés" : "Highlight ajouté", "success");
+        toast(
+            noteBody
+                ? t("toastHighlightAndNoteAdded", "Highlight and note added")
+                : t("toastHighlightAdded", "Highlight added"),
+            "success",
+        );
     } catch (err) {
-        toast(err.message || "Erreur ajout highlight", "error");
+        toast(err.message || t("toastHighlightAddError", "Error adding highlight"), "error");
     }
 }
 
@@ -653,7 +832,7 @@ async function saveNoteFromPopover() {
 
     const body = dom.noteBodyInput.value.trim();
     if (!body) {
-        toast("Le texte de la note est requis", "error");
+        toast(t("toastNoteRequired", "Note text is required"), "error");
         return;
     }
 
@@ -670,20 +849,20 @@ async function saveNoteFromPopover() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload),
             });
-            toast("Note ajoutée", "success");
+            toast(t("toastNoteAdded", "Note added"), "success");
         } else {
             await fetchJson(`/api/notes/${state.pendingNote.note.id}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ body }),
             });
-            toast("Note mise à jour", "success");
+            toast(t("toastNoteUpdated", "Note updated"), "success");
         }
 
         closeNotePopover();
         await loadAnnotations();
     } catch (err) {
-        toast(err.message || "Erreur note", "error");
+        toast(err.message || t("toastNoteError", "Note error"), "error");
     }
 }
 
@@ -695,9 +874,9 @@ async function deleteCurrentNote() {
         });
         closeNotePopover();
         await loadAnnotations();
-        toast("Note supprimée", "success");
+        toast(t("toastNoteDeleted", "Note deleted"), "success");
     } catch (err) {
-        toast(err.message || "Erreur suppression note", "error");
+        toast(err.message || t("toastDeleteNoteError", "Error deleting note"), "error");
     }
 }
 
@@ -705,9 +884,9 @@ async function deleteHighlight(id) {
     try {
         await fetchJson(`/api/highlights/${id}`, { method: "DELETE" });
         await loadAnnotations();
-        toast("Highlight supprimé", "success");
+        toast(t("toastHighlightDeleted", "Highlight deleted"), "success");
     } catch (err) {
-        toast(err.message || "Erreur suppression highlight", "error");
+        toast(err.message || t("toastDeleteHighlightError", "Error deleting highlight"), "error");
     }
 }
 
@@ -734,7 +913,7 @@ function renderAnnotationsOnPage(pageNumber) {
                 node.style.top = `${r.y * scale}px`;
                 node.style.width = `${r.w * scale}px`;
                 node.style.height = `${r.h * scale}px`;
-                node.title = highlight.note || highlight.text_content || "Highlight";
+                node.title = highlight.note || highlight.text_content || t("highlightFallbackTitle", "Highlight");
                 layer.appendChild(node);
             });
         });
@@ -763,7 +942,7 @@ function renderHighlightsList() {
     dom.highlightsList.innerHTML = "";
 
     if (!state.highlights.length) {
-        dom.highlightsList.appendChild(emptyListItem("Aucun highlight"));
+        dom.highlightsList.appendChild(emptyListItem(t("noHighlights", "No highlights")));
         return;
     }
 
@@ -771,7 +950,7 @@ function renderHighlightsList() {
         const li = document.createElement("li");
         li.innerHTML = `
             <div class="meta">
-                <span><span class="swatch" style="background:${colorToHex(highlight.color)}"></span>Page ${highlight.page_number}</span>
+                <span><span class="swatch" style="background:${colorToHex(highlight.color)}"></span>${t("page", "Page")} ${highlight.page_number}</span>
                 <span>${new Date(highlight.created_at).toLocaleDateString()}</span>
             </div>
             <div>${escapeHtml(truncate(highlight.text_content || "", 160))}</div>
@@ -788,7 +967,7 @@ function renderNotesList() {
     dom.notesList.innerHTML = "";
 
     if (!state.notes.length) {
-        dom.notesList.appendChild(emptyListItem("Aucune note"));
+        dom.notesList.appendChild(emptyListItem(t("noNotes", "No notes")));
         return;
     }
 
@@ -796,7 +975,7 @@ function renderNotesList() {
         const li = document.createElement("li");
         li.innerHTML = `
             <div class="meta">
-                <span>Page ${note.page_number}</span>
+                <span>${t("page", "Page")} ${note.page_number}</span>
                 <span>${new Date(note.created_at).toLocaleDateString()}</span>
             </div>
             <div>${escapeHtml(truncate(note.body || "", 160))}</div>
@@ -870,7 +1049,7 @@ function scrollToPage(pageNumber, smooth = true) {
 
 function refreshPageUi() {
     if (dom.pageInfo) {
-        dom.pageInfo.textContent = `Page ${state.pageNumber} / ${state.totalPages}`;
+        dom.pageInfo.textContent = `${t("page", "Page")} ${state.pageNumber} / ${state.totalPages}`;
     }
     dom.zoomLabel.textContent = `${Math.round(state.zoom * 100)}%`;
     if (dom.pageSlider) {
@@ -910,7 +1089,7 @@ async function fetchJson(url, options) {
     const response = await fetch(url, options);
     const data = await response.json();
     if (!response.ok) {
-        throw new Error(data.error || "Erreur API");
+        throw new Error(data.error || t("apiError", "API error"));
     }
     return data;
 }

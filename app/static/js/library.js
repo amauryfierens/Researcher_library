@@ -4,6 +4,7 @@ const SUPPORTED_LANGS = new Set(["fr", "en"]);
 const translations = {
     fr: {
         appLogo: "Research Library",
+        libraryPageTitle: "Bibliothèque scientifique",
         searchPlaceholder: "Rechercher (titre, auteurs, DOI, arXiv, texte intégral)...",
         viewArticles: "Vue articles",
         viewCollections: "Vue collections",
@@ -41,6 +42,9 @@ const translations = {
         year: "Année",
         status: "Statut",
         discipline: "Discipline",
+        doi: "DOI",
+        journal: "Journal",
+        venue: "Venue",
         keywordsCsv: "Mots-clés (séparés par virgule)",
         arxivRefetch: "arXiv ID/URL (pour re-fetch)",
         refetchArxiv: "Re-fetch arXiv",
@@ -50,6 +54,7 @@ const translations = {
         read: "Lire",
         edit: "Editer",
         open: "Ouvrir",
+        select: "Selectionner",
         unknownAuthor: "Auteur inconnu",
         untitled: "Sans titre",
         statusNA: "statut n/a",
@@ -94,9 +99,11 @@ const translations = {
         toastCollectionNameRequired: "Nom de collection requis",
         toastCollectionCreateFailed: "Creation impossible",
         toastCollectionCreateSuccess: "Collection creee",
+        apiError: "Erreur API",
     },
     en: {
         appLogo: "Research Library",
+        libraryPageTitle: "Scientific library",
         searchPlaceholder: "Search (title, authors, DOI, arXiv, full text)...",
         viewArticles: "Articles view",
         viewCollections: "Collections view",
@@ -134,6 +141,9 @@ const translations = {
         year: "Year",
         status: "Status",
         discipline: "Discipline",
+        doi: "DOI",
+        journal: "Journal",
+        venue: "Venue",
         keywordsCsv: "Keywords (comma-separated)",
         arxivRefetch: "arXiv ID/URL (for re-fetch)",
         refetchArxiv: "Re-fetch arXiv",
@@ -143,6 +153,7 @@ const translations = {
         read: "Read",
         edit: "Edit",
         open: "Open",
+        select: "Select",
         unknownAuthor: "Unknown author",
         untitled: "Untitled",
         statusNA: "status n/a",
@@ -187,6 +198,7 @@ const translations = {
         toastCollectionNameRequired: "Collection name is required",
         toastCollectionCreateFailed: "Unable to create collection",
         toastCollectionCreateSuccess: "Collection created",
+        apiError: "API error",
     },
 };
 
@@ -206,10 +218,10 @@ function t(key, fallback = "") {
 }
 
 const statusLabels = {
-    to_read: t("statusToRead", "A lire"),
-    reading: t("statusReading", "En cours"),
-    read: t("statusRead", "Lu"),
-    to_reread: t("statusReread", "A relire"),
+    to_read: t("statusToRead", "To read"),
+    reading: t("statusReading", "Reading"),
+    read: t("statusRead", "Read"),
+    to_reread: t("statusReread", "To reread"),
 };
 
 const statusOptions = ["to_read", "reading", "read", "to_reread"];
@@ -332,6 +344,9 @@ function highlightActiveLanguage() {
 }
 
 function applyStaticTranslations() {
+    document.documentElement.lang = currentLanguage;
+    document.title = t("libraryPageTitle", document.title);
+
     const appLogo = document.querySelector(".app-logo");
     if (appLogo) appLogo.textContent = t("appLogo", "Research Library");
 
@@ -358,6 +373,31 @@ function applyStaticTranslations() {
     if (yearsTitle) yearsTitle.textContent = t("years", yearsTitle.textContent);
     const collectionsTitle = document.querySelector(".sidebar h3");
     if (collectionsTitle) collectionsTitle.textContent = t("collections", collectionsTitle.textContent);
+    if (dom.backToCollectionsBtn) {
+        dom.backToCollectionsBtn.textContent = t("backToCollections", dom.backToCollectionsBtn.textContent);
+    }
+
+    const emptyStateTitle = document.querySelector("#emptyState h2");
+    if (emptyStateTitle) emptyStateTitle.textContent = t("noArticles", emptyStateTitle.textContent);
+    const emptyStateHint = document.querySelector("#emptyState p");
+    if (emptyStateHint) emptyStateHint.textContent = t("emptyArticlesHint", emptyStateHint.textContent);
+
+    const collectionsEmptyTitle = document.querySelector("#collectionsEmptyState h2");
+    if (collectionsEmptyTitle) collectionsEmptyTitle.textContent = t("noCollections", collectionsEmptyTitle.textContent);
+    const collectionsEmptyHint = document.querySelector("#collectionsEmptyState p");
+    if (collectionsEmptyHint) collectionsEmptyHint.textContent = t("noCollectionsHint", collectionsEmptyHint.textContent);
+
+    const collectionArticlesEmptyTitle = document.querySelector("#collectionArticlesEmptyState h2");
+    if (collectionArticlesEmptyTitle) {
+        collectionArticlesEmptyTitle.textContent = t("noArticleInCollection", collectionArticlesEmptyTitle.textContent);
+    }
+    const collectionArticlesEmptyHint = document.querySelector("#collectionArticlesEmptyState p");
+    if (collectionArticlesEmptyHint) {
+        collectionArticlesEmptyHint.textContent = t(
+            "noArticleInCollectionHint",
+            collectionArticlesEmptyHint.textContent
+        );
+    }
 
     const uploadModalTitle = document.querySelector("#uploadModal h2");
     if (uploadModalTitle) uploadModalTitle.textContent = t("uploadArticleTitle", uploadModalTitle.textContent);
@@ -380,6 +420,9 @@ function applyStaticTranslations() {
         ["editYear", "year"],
         ["editStatus", "status"],
         ["editDiscipline", "discipline"],
+        ["editDoi", "doi"],
+        ["editJournal", "journal"],
+        ["editVenue", "venue"],
         ["editKeywords", "keywordsCsv"],
         ["editArxiv", "arxivRefetch"],
     ];
@@ -395,6 +438,11 @@ function applyStaticTranslations() {
     dom.saveEditBtn.textContent = t("save", dom.saveEditBtn.textContent);
     dom.cancelDeleteBtn.textContent = t("cancel", dom.cancelDeleteBtn.textContent);
     dom.confirmDeleteBtn.textContent = t("delete", dom.confirmDeleteBtn.textContent);
+
+    const editCollectionsLabel = dom.editCollections?.closest(".form-row")?.querySelector("label");
+    if (editCollectionsLabel) {
+        editCollectionsLabel.textContent = t("collections", editCollectionsLabel.textContent);
+    }
 
     const statusSelect = dom.editStatus;
     if (statusSelect && statusSelect.options.length >= 4) {
@@ -530,7 +578,7 @@ async function loadCollections() {
         renderCollections();
         renderCollectionsBrowser();
     } catch (err) {
-        toast(err.message || "Erreur chargement collections", "error");
+        toast(err.message || t("toastLoadCollectionsError", "Error loading collections"), "error");
     }
 }
 
@@ -558,7 +606,7 @@ async function loadArticles() {
         dropInvalidSelections();
         renderAll();
     } catch (err) {
-        toast(err.message || "Erreur chargement articles", "error");
+        toast(err.message || t("toastLoadArticlesError", "Error loading articles"), "error");
     }
 }
 
@@ -574,7 +622,7 @@ async function loadCollectionViewArticles(collectionId = state.collectionView.se
         dropInvalidSelections();
         renderCollectionArticleGrid();
     } catch (err) {
-        toast(err.message || "Erreur chargement de la collection", "error");
+        toast(err.message || t("toastLoadCollectionArticlesError", "Error loading collection articles"), "error");
     }
 }
 
@@ -616,30 +664,30 @@ function applyViewMode() {
 
 function renderHeaderInfo() {
     const count = state.articles.length;
-    dom.resultCount.textContent = `${count} article${count > 1 ? "s" : ""}`;
+    dom.resultCount.textContent = `${count} ${count > 1 ? t("resultLabelArticles", "articles") : t("resultLabelArticle", "article")}`;
     dom.bulkBibtexBtn.textContent =
         state.selectedIds.size > 0
-            ? `Exporter BibTeX sélection (${state.selectedIds.size})`
-            : "Exporter BibTeX sélection";
+            ? `${t("exportSelected", "Export selected BibTeX")} (${state.selectedIds.size})`
+            : t("exportSelected", "Export selected BibTeX");
 
     const parts = [];
     if (state.filters.collection) {
         const col = state.collections.find((c) => c.id === state.filters.collection);
-        if (col) parts.push(`collection: ${col.name}`);
+        if (col) parts.push(`${t("filteredCollection", "collection")}: ${col.name}`);
     }
     if (state.filters.status) {
-        parts.push(`statut: ${statusLabels[state.filters.status] || state.filters.status}`);
+        parts.push(`${t("filteredStatus", "status")}: ${statusLabels[state.filters.status] || state.filters.status}`);
     }
     if (state.filters.yearRange) {
-        parts.push(`annees: ${state.filters.yearRange.label}`);
+        parts.push(`${t("filteredYears", "years")}: ${state.filters.yearRange.label}`);
     }
-    dom.activeFilterLabel.textContent = parts.length ? parts.join(" | ") : "Tous les articles";
+    dom.activeFilterLabel.textContent = parts.length ? parts.join(" | ") : t("allArticles", "All articles");
 }
 
 function renderCollections() {
     dom.collectionList.innerHTML = "";
     const isCollectionView = state.viewMode === "collections";
-    const allLabel = isCollectionView ? "Toutes les collections" : "Toutes";
+    const allLabel = isCollectionView ? t("allCollectionsLabel", "All collections") : t("allFeminine", "All");
     const allActive = isCollectionView
         ? state.collectionView.selectedCollectionId === null
         : state.filters.collection === null;
@@ -687,12 +735,12 @@ function renderCollectionsBrowser() {
 
     if (selectedCollectionId) {
         const current = state.collections.find((col) => col.id === selectedCollectionId);
-        dom.collectionDetailTitle.textContent = current?.name || "Collection";
+        dom.collectionDetailTitle.textContent = current?.name || t("collectionDefaultTitle", "Collection");
 
         const metaParts = [];
         if (current?.description) metaParts.push(current.description);
         if (typeof current?.article_count === "number") {
-            metaParts.push(`${current.article_count} article${current.article_count > 1 ? "s" : ""}`);
+            metaParts.push(`${current.article_count} ${current.article_count > 1 ? t("resultLabelArticles", "articles") : t("resultLabelArticle", "article")}`);
         }
         dom.collectionDetailMeta.textContent = metaParts.join(" | ");
         return;
@@ -718,7 +766,7 @@ function renderCollectionsBrowser() {
 
         const desc = document.createElement("p");
         desc.className = "muted";
-        desc.textContent = collection.description || "Aucune description";
+        desc.textContent = collection.description || t("noDescription", "No description");
         card.appendChild(desc);
 
         const footer = document.createElement("div");
@@ -726,10 +774,10 @@ function renderCollectionsBrowser() {
 
         const count = document.createElement("span");
         count.className = "count-badge";
-        count.textContent = `${collection.article_count} article${collection.article_count > 1 ? "s" : ""}`;
+        count.textContent = `${collection.article_count} ${collection.article_count > 1 ? t("resultLabelArticles", "articles") : t("resultLabelArticle", "article")}`;
         footer.appendChild(count);
 
-        const openBtn = actionBtn("Ouvrir", "btn-primary", () => openCollectionDetail(collection.id));
+        const openBtn = actionBtn(t("open", "Open"), "btn-primary", () => openCollectionDetail(collection.id));
         footer.appendChild(openBtn);
 
         card.addEventListener("click", () => openCollectionDetail(collection.id));
@@ -758,14 +806,14 @@ function closeCollectionDetail() {
 function renderStatusFilters() {
     const source = applyYearRangeFilter(state.facetArticles, state.filters.yearRange);
     const values = [
-        ["to_read", "A lire"],
-        ["reading", "En cours"],
-        ["read", "Lu"],
-        ["to_reread", "A relire"],
+        ["to_read", t("statusToRead", "To read")],
+        ["reading", t("statusReading", "Reading")],
+        ["read", t("statusRead", "Read")],
+        ["to_reread", t("statusReread", "To reread")],
     ];
 
     dom.statusList.innerHTML = "";
-    const all = buildSidebarItem("Tous", state.filters.status === null, source.length, () => {
+    const all = buildSidebarItem(t("all", "All"), state.filters.status === null, source.length, () => {
         state.filters.status = null;
         loadArticles();
     });
@@ -787,7 +835,7 @@ function renderYearFilters() {
         : state.facetArticles;
     dom.yearList.innerHTML = "";
 
-    const all = buildSidebarItem("Toutes", state.filters.yearRange === null, source.length, () => {
+    const all = buildSidebarItem(t("allFeminine", "All"), state.filters.yearRange === null, source.length, () => {
         clearYearRangeFilter();
         loadArticles();
     });
@@ -835,14 +883,14 @@ function applyCustomYearRange() {
     }
 
     if (!startRaw || !endRaw) {
-        toast("Saisissez une plage complete: annee debut et annee fin", "error");
+        toast(t("toastYearRangeIncomplete", "Please provide a complete range: start year and end year"), "error");
         return;
     }
 
     let start = Number(startRaw);
     let end = Number(endRaw);
     if (!Number.isInteger(start) || !Number.isInteger(end)) {
-        toast("Les annees doivent etre des nombres entiers", "error");
+        toast(t("toastYearRangeInvalid", "Years must be integer numbers"), "error");
         return;
     }
 
@@ -957,7 +1005,7 @@ function buildArticleCard(article) {
     const select = document.createElement("button");
     select.className = "select-toggle";
     select.type = "button";
-    select.title = "Selectionner";
+    select.title = t("select", "Select");
     select.addEventListener("click", (e) => {
         e.stopPropagation();
         toggleSelected(article.id);
@@ -968,18 +1016,18 @@ function buildArticleCard(article) {
 
     const title = document.createElement("div");
     title.className = "title";
-    title.textContent = article.title || "Sans titre";
+    title.textContent = article.title || t("untitled", "Untitled");
     card.appendChild(title);
 
     const authors = document.createElement("div");
     authors.className = "authors";
-    authors.textContent = (article.authors || []).join(", ") || "Auteur inconnu";
+    authors.textContent = (article.authors || []).join(", ") || t("unknownAuthor", "Unknown author");
     card.appendChild(authors);
 
     const meta = document.createElement("div");
     meta.className = "meta";
     const yearBadge = badge(article.year ? String(article.year) : "n.d.");
-    const statusBadge = badge(statusLabels[article.reading_status] || "statut n/a");
+    const statusBadge = badge(statusLabels[article.reading_status] || t("statusNA", "status n/a"));
     meta.appendChild(yearBadge);
     meta.appendChild(statusBadge);
     if (article.discipline) meta.appendChild(badge(article.discipline));
@@ -992,18 +1040,18 @@ function buildArticleCard(article) {
     const rowPrimary = document.createElement("div");
     rowPrimary.className = "actions-row";
 
-    rowPrimary.appendChild(actionBtn("Lire", "btn-primary", () => {
+    rowPrimary.appendChild(actionBtn(t("read", "Read"), "btn-primary", () => {
         window.location.href = `/read/${article.id}`;
     }));
 
     rowPrimary.appendChild(quickActionBtn(
-        "Statut",
+        t("status", "Status"),
         "is-status",
         (button) => openQuickActionMenu(button, "status", article.id)
     ));
 
     rowPrimary.appendChild(quickActionBtn(
-        "Collections",
+        t("collections", "Collections"),
         "is-collections",
         (button) => openQuickActionMenu(button, "collections", article.id)
     ));
@@ -1029,13 +1077,13 @@ function buildArticleCard(article) {
     const rowAdmin = document.createElement("div");
     rowAdmin.className = "actions-row";
 
-    rowAdmin.appendChild(actionBtn("Editer", "btn-secondary", () => {
+    rowAdmin.appendChild(actionBtn(t("edit", "Edit"), "btn-secondary", () => {
         openEditModal(article);
     }));
 
-    rowAdmin.appendChild(actionBtn("Supprimer", "btn-danger", () => {
+    rowAdmin.appendChild(actionBtn(t("delete", "Delete"), "btn-danger", () => {
         state.deletingArticleId = article.id;
-        dom.deleteLabel.textContent = article.title || "(sans titre)";
+        dom.deleteLabel.textContent = article.title || `(${t("untitled", "Untitled")})`;
         openModal(dom.deleteModal);
     }));
 
@@ -1140,7 +1188,7 @@ function renderQuickActionMenu() {
 
     const title = document.createElement("div");
     title.className = "quick-menu-title";
-    title.textContent = state.quickMenu.type === "status" ? "Changer le statut" : "Collections";
+    title.textContent = state.quickMenu.type === "status" ? t("chooseStatus", "Change status") : t("collections", "Collections");
     dom.quickActionMenu.appendChild(title);
 
     if (state.quickMenu.type === "status") {
@@ -1161,7 +1209,7 @@ function renderQuickActionMenu() {
     if (!state.collections.length) {
         const empty = document.createElement("div");
         empty.className = "quick-menu-empty";
-        empty.textContent = "Aucune collection";
+        empty.textContent = t("noCollectionAvailable", "No collections");
         dom.quickActionMenu.appendChild(empty);
         return;
     }
@@ -1190,14 +1238,14 @@ async function setArticleStatusQuick(articleId, readingStatus) {
         });
         const data = await response.json();
         if (!response.ok) {
-            throw new Error(data.error || "Mise a jour du statut impossible");
+            throw new Error(data.error || t("toastStatusUpdateFailed", "Unable to update status"));
         }
 
         closeQuickActionMenu();
-        toast("Statut mis a jour", "success");
+        toast(t("toastStatusUpdated", "Status updated"), "success");
         await refresh();
     } catch (err) {
-        toast(err.message || "Mise a jour du statut impossible", "error");
+        toast(err.message || t("toastStatusUpdateFailed", "Unable to update status"), "error");
     }
 }
 
@@ -1218,14 +1266,14 @@ async function toggleArticleCollectionQuick(articleId, collectionId, isAssigned)
 
         const data = await response.json();
         if (!response.ok) {
-            throw new Error(data.error || "Mise a jour des collections impossible");
+            throw new Error(data.error || t("toastCollectionsUpdateFailed", "Unable to update collections"));
         }
 
         closeQuickActionMenu();
-        toast(isAssigned ? "Retire de la collection" : "Ajoute a la collection", "success");
+        toast(isAssigned ? t("toastCollectionRemoved", "Removed from collection") : t("toastCollectionAdded", "Added to collection"), "success");
         await refresh();
     } catch (err) {
-        toast(err.message || "Mise a jour des collections impossible", "error");
+        toast(err.message || t("toastCollectionsUpdateFailed", "Unable to update collections"), "error");
     }
 }
 
@@ -1252,7 +1300,7 @@ async function uploadArticle() {
     const arxiv = dom.uploadArxiv.value.trim();
 
     if (!file && !arxiv) {
-        toast("Selectionnez un PDF ou renseignez une URL/ID arXiv", "error");
+        toast(t("toastUploadNeedInput", "Select a PDF or provide an arXiv URL/ID"), "error");
         return;
     }
 
@@ -1268,16 +1316,16 @@ async function uploadArticle() {
         const response = await fetch("/api/articles", { method: "POST", body: form });
         const payload = await response.json();
         if (!response.ok) {
-            throw new Error(payload.error || "Echec du televersement");
+            throw new Error(payload.error || t("toastUploadFailed", "Upload failed"));
         }
 
         closeModal(dom.uploadModal);
         dom.uploadFile.value = "";
         dom.uploadArxiv.value = "";
-        toast("Article ajoute", "success");
+        toast(t("toastUploadSuccess", "Article added"), "success");
         await refresh();
     } catch (err) {
-        toast(err.message || "Echec du televersement", "error");
+        toast(err.message || t("toastUploadFailed", "Upload failed"), "error");
     }
 }
 
@@ -1303,7 +1351,7 @@ function renderCollectionChecklist(selectedIds = []) {
     if (!state.collections.length) {
         const p = document.createElement("p");
         p.className = "muted";
-        p.textContent = "Aucune collection";
+        p.textContent = t("noCollectionAvailable", "No collections");
         dom.editCollections.appendChild(p);
         return;
     }
@@ -1351,13 +1399,13 @@ async function saveArticleEdits() {
         });
         const data = await response.json();
         if (!response.ok) {
-            throw new Error(data.error || "Echec mise a jour");
+            throw new Error(data.error || t("toastUpdateFailed", "Update failed"));
         }
         closeModal(dom.editModal);
-        toast("Metadonnees mises a jour", "success");
+        toast(t("toastUpdateSuccess", "Metadata updated"), "success");
         await refresh();
     } catch (err) {
-        toast(err.message || "Echec mise a jour", "error");
+        toast(err.message || t("toastUpdateFailed", "Update failed"), "error");
     }
 }
 
@@ -1365,7 +1413,7 @@ async function refetchArxivMetadata() {
     if (!state.editingArticleId) return;
     const arxiv = dom.editArxiv.value.trim();
     if (!arxiv) {
-        toast("Renseignez un ID ou URL arXiv", "error");
+        toast(t("toastArxivRequired", "Provide an arXiv ID or URL"), "error");
         return;
     }
 
@@ -1377,13 +1425,13 @@ async function refetchArxivMetadata() {
         });
         const data = await response.json();
         if (!response.ok) {
-            throw new Error(data.error || "Echec re-fetch arXiv");
+            throw new Error(data.error || t("toastArxivRefetchFailed", "arXiv re-fetch failed"));
         }
-        toast("Metadonnees arXiv mises a jour", "success");
+        toast(t("toastArxivRefetchSuccess", "arXiv metadata updated"), "success");
         openEditModal(data);
         await refresh();
     } catch (err) {
-        toast(err.message || "Echec re-fetch arXiv", "error");
+        toast(err.message || t("toastArxivRefetchFailed", "arXiv re-fetch failed"), "error");
     }
 }
 
@@ -1394,20 +1442,20 @@ async function confirmDeleteArticle() {
             method: "DELETE",
         });
         if (!response.ok) {
-            throw new Error("Suppression impossible");
+            throw new Error(t("toastDeleteFailed", "Delete failed"));
         }
         closeModal(dom.deleteModal);
         state.deletingArticleId = null;
-        toast("Article supprime", "success");
+        toast(t("toastDeleteSuccess", "Article deleted"), "success");
         await refresh();
     } catch (err) {
-        toast(err.message || "Suppression impossible", "error");
+        toast(err.message || t("toastDeleteFailed", "Delete failed"), "error");
     }
 }
 
 async function exportBulkBibtex() {
     if (state.selectedIds.size === 0) {
-        toast("Selectionnez au moins un article", "error");
+        toast(t("toastNeedSelection", "Select at least one article"), "error");
         return;
     }
 
@@ -1420,20 +1468,20 @@ async function exportBulkBibtex() {
 
         if (!response.ok) {
             const payload = await response.json();
-            throw new Error(payload.error || "Export BibTeX impossible");
+            throw new Error(payload.error || t("toastExportFailed", "BibTeX export failed"));
         }
 
         await downloadBlob(response, "library.bib");
-        toast("Export BibTeX termine", "success");
+        toast(t("toastExportSuccess", "BibTeX export completed"), "success");
     } catch (err) {
-        toast(err.message || "Export BibTeX impossible", "error");
+        toast(err.message || t("toastExportFailed", "BibTeX export failed"), "error");
     }
 }
 
 async function createCollection() {
     const name = dom.newCollectionName.value.trim();
     if (!name) {
-        toast("Nom de collection requis", "error");
+        toast(t("toastCollectionNameRequired", "Collection name is required"), "error");
         return;
     }
 
@@ -1447,19 +1495,19 @@ async function createCollection() {
         });
         const data = await response.json();
         if (!response.ok) {
-            throw new Error(data.error || "Creation impossible");
+            throw new Error(data.error || t("toastCollectionCreateFailed", "Unable to create collection"));
         }
 
         dom.newCollectionName.value = "";
         dom.newCollectionDescription.value = "";
-        toast("Collection creee", "success");
+        toast(t("toastCollectionCreateSuccess", "Collection created"), "success");
         await refresh();
         if (state.editingArticleId) {
             const current = state.articles.find((a) => a.id === state.editingArticleId);
             if (current) renderCollectionChecklist(current.collection_ids || []);
         }
     } catch (err) {
-        toast(err.message || "Creation impossible", "error");
+        toast(err.message || t("toastCollectionCreateFailed", "Unable to create collection"), "error");
     }
 }
 
@@ -1492,7 +1540,7 @@ async function fetchJson(url, options) {
     const response = await fetch(url, options);
     const data = await response.json();
     if (!response.ok) {
-        throw new Error(data.error || "Erreur API");
+        throw new Error(data.error || t("apiError", "API error"));
     }
     return data;
 }
