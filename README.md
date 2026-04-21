@@ -1,240 +1,219 @@
 # Research Library
 
-A Flask app to manage a personal library of scientific PDF papers, with an integrated PDF reader, annotations, collections, advanced filtering, and BibTeX/Markdown export.
+> A personal library for researchers — manage, read, and annotate scientific PDFs in your browser.
 
-## Contents
+[![Python](https://img.shields.io/badge/Python-3.10+-blue?logo=python&logoColor=white)](https://www.python.org/)
+[![Flask](https://img.shields.io/badge/Flask-3.x-black?logo=flask)](https://flask.palletsprojects.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![SQLite](https://img.shields.io/badge/Database-SQLite-lightgrey?logo=sqlite)](https://sqlite.org/)
 
-- Overview
-- Features
-- Tech stack
-- Quick setup
-- Run the app
-- Configuration
-- Usage
-- Main API endpoints
-- Project structure
-- Data and persistence
-- Known limitations
+---
 
-## Overview
+## Visualization
 
-This project lets you:
+![Library view](docs/screenshots/library.png)
 
-- import papers from local PDF files or arXiv
-- enrich and edit metadata
-- organize papers into collections
-- track reading status
-- search in extracted full text
-- read and annotate PDFs directly in the app
-- export BibTeX references and annotation notes
+![PDF reader with annotations](docs/screenshots/reader.png)
+
+---
 
 ## Features
 
-### Library
+|                    | Feature                                                            |
+| ------------------ | ------------------------------------------------------------------ |
+| **Import**   | Upload local PDFs or import directly from an arXiv URL/ID          |
+| **Metadata** | Auto-fetch title, authors, abstract, DOI, year, journal from arXiv |
+| **Organize** | Create collections, assign papers, track reading status            |
+| **Search**   | Full-text search across title, authors, abstract, and PDF content  |
+| **Filter**   | Filter by collection, status, year range, or decade buckets        |
+| **Read**     | Built-in PDF reader (PDF.js) with zoom and page navigation         |
+| **Annotate** | Colored text highlights and page-anchored notes                    |
+| **Export**   | BibTeX (single or bulk) and Markdown annotation export             |
 
-- PDF upload (max file size: 200 MB)
-- Direct import from arXiv URL/ID (automatic PDF download)
-- Automatic arXiv metadata fetch (on import and via re-fetch)
-- Rich metadata: title, authors, abstract, DOI, year, journal, venue, discipline, keywords
-- Article view and collection-first view
-- Quick actions on each article card:
-  - update reading status
-  - add/remove collections
-  - export BibTeX
-  - open arxivisual (when arXiv ID is present)
+---
 
-### Search and filters
-
-- Text search across title, authors, abstract, DOI, arXiv, and extracted PDF text
-- Filter by collection
-- Filter by reading status
-- Year filtering by decade buckets
-- Custom year range filter (From/To)
-- Cross-filtering behavior:
-  - status counts are recomputed from the active year range
-  - decade buckets are recomputed from the active status
-
-### PDF reader and annotations
-
-- PDF.js-based reader
-- Zoom and page navigation
-- Colored text highlights
-- Page-anchored notes
-- Edit/delete highlights via popover
-- Highlights/Notes dashboard in side panel
-- Copy citation from selected text
-- Export annotations to Markdown
-
-### Export
-
-- Single paper BibTeX export
-- Bulk BibTeX export (selected papers)
-- Markdown export for paper annotations
-
-## Tech stack
-
-- Backend: Flask 3, Flask-SQLAlchemy
-- Database: SQLite
-- PDF parsing: PyPDF2
-- External HTTP: requests (arXiv)
-- Frontend: Jinja2 templates + vanilla JavaScript + CSS
-- Reader: PDF.js (CDN)
-
-Python dependencies (see `requirements.txt`):
-
-- Flask==3.1.*
-- Flask-SQLAlchemy==3.1.*
-- PyPDF2==3.0.*
-- requests==2.32.*
-
-## Quick setup
+## Quick Start
 
 ```bash
+# 1. Clone the repo
+git clone <your-repo-url>
+cd Researcher_library
+
+# 2. Create and activate a virtual environment
 python3 -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate        # Linux/macOS
+.venv\Scripts\activate           # Windows
+
+# 3. Install dependencies
 pip install -r requirements.txt
-```
 
-## Run the app
-
-```bash
+# 4. Run the app
 python run.py
 ```
 
-The app runs at:
+Open [http://127.0.0.1:5000](http://127.0.0.1:5000) in your browser.
 
-- http://127.0.0.1:5000
-
-## Configuration
-
-Configuration is in `app/config.py`:
-
-- `SQLALCHEMY_DATABASE_URI`: local SQLite database (`library.db`)
-- `UPLOAD_FOLDER`: PDF storage folder (`uploads/`)
-- `MAX_CONTENT_LENGTH`: upload limit (200 MB)
-- `ALLOWED_EXTENSIONS`: `{"pdf"}`
-- `ARXIVISUAL_URL_TEMPLATE`: target URL for arxivisual links
-- `FULLTEXT_MAX_CHARS`: max extracted PDF text stored for search
+---
 
 ## Usage
 
-### Add a paper
+### Adding papers
 
-Two options:
+**From arXiv** — Paste an arXiv URL or ID (e.g. `2310.01234`). Metadata and PDF are fetched automatically.
 
-- Local PDF upload (with metadata/text extraction)
-- arXiv URL/ID import (full import from arXiv)
+**From a local PDF** — Upload a PDF file (up to 200 MB). Metadata is extracted from the PDF and can be edited manually.
 
-### Organize the library
+---
 
-- Create collections in the sidebar
-- Assign/reassign a paper with the `Collections` quick action on cards
-- Update reading status quickly with the `Status` quick action
+### Organizing your library
 
-### Filter
+- **Collections** — Create collections from the sidebar and assign papers to them via the card quick-actions.
+- **Reading status** — Mark papers as *unread*, *reading*, or *read* directly from the card.
 
-- Use Collection, Status, and Year (decade) facets
-- Enter a custom range in `From` / `To`, then click `Apply` (or press Enter)
+---
 
-### Annotate PDFs
+### Searching and filtering
 
-- Open reader with double-click on a card or the `Read` button
-- Select text to create a highlight
-- Click in the page to create a note
-- Export annotations to Markdown
+- Type in the search bar to search across **title, authors, abstract, DOI, arXiv ID, and full PDF text**.
+- Use the **Collection**, **Status**, and **Year** facets in the sidebar to narrow down results.
+- Enter a custom year range with the **From / To** fields and press `Apply` or `Enter`.
 
-## Main API endpoints
+Filters interact intelligently: status counts update with the active year range, and decade buckets update with the active status filter.
 
-### Articles
+---
 
-- `GET /api/articles` (filters: `q`, `collection`, `status`, `year`)
-- `POST /api/articles`
-- `GET /api/articles/<id>`
-- `PATCH /api/articles/<id>`
-- `DELETE /api/articles/<id>`
-- `POST /api/articles/<id>/fetch-arxiv`
-- `GET /api/articles/<id>/bibtex`
-- `POST /api/articles/bibtex-bulk`
+### Reading and annotating
 
-### Collections
+1. Double-click a card (or click **Read**) to open the built-in reader.
+2. **Select text** on a page to create a colored highlight.
+3. **Click anywhere** on a page to add a note.
+4. Manage highlights and notes from the side panel.
+5. Export all annotations for a paper to **Markdown** with one click.
 
-- `GET /api/collections`
-- `POST /api/collections`
-- `PATCH /api/collections/<id>`
-- `DELETE /api/collections/<id>`
-- `POST /api/collections/<id>/articles`
-- `DELETE /api/collections/<id>/articles/<article_id>`
+---
 
-### Annotations
+## Configuration
 
-- Highlights:
-  - `GET /api/articles/<id>/highlights`
-  - `POST /api/articles/<id>/highlights`
-  - `PATCH /api/highlights/<id>`
-  - `DELETE /api/highlights/<id>`
-- Notes:
-  - `GET /api/articles/<id>/notes`
-  - `POST /api/articles/<id>/notes`
-  - `PATCH /api/notes/<id>`
-  - `DELETE /api/notes/<id>`
-- Export:
-  - `GET /api/articles/<id>/annotations/export`
+All configuration lives in [`app/config.py`](app/config.py).
 
-### Reader
+| Variable                    | Default        | Description                       |
+| --------------------------- | -------------- | --------------------------------- |
+| `SQLALCHEMY_DATABASE_URI` | `library.db` | SQLite database path              |
+| `UPLOAD_FOLDER`           | `uploads/`   | PDF storage folder                |
+| `MAX_CONTENT_LENGTH`      | 200 MB         | Maximum upload size               |
+| `ALLOWED_EXTENSIONS`      | `{"pdf"}`    | Accepted file types               |
+| `FULLTEXT_MAX_CHARS`      | —             | Max PDF text stored for search    |
+| `ARXIVISUAL_URL_TEMPLATE` | —             | URL template for arxivisual links |
 
-- `GET /read/<id>`
-- `GET /uploads/<filename>`
+---
 
-## Project structure
+## Project Structure
 
-```text
-run.py
-requirements.txt
-app/
-  __init__.py
-  config.py
-  models.py
-  routes/
-    articles.py
-    collections.py
-    annotations.py
-    reader.py
-  services/
-    article_service.py
-    arxiv_service.py
-    bibtex_service.py
-    file_service.py
-    search_service.py
-  static/
-    css/style.css
-    js/library.js
-    js/reader.js
-    js/annotations.js
-  templates/
-    base.html
-    library.html
-    reader.html
-uploads/
-library.db
+```
+Researcher_library/
+├── run.py                  # Entry point
+├── requirements.txt
+├── app/
+│   ├── config.py
+│   ├── models.py           # SQLAlchemy models
+│   ├── routes/
+│   │   ├── articles.py
+│   │   ├── collections.py
+│   │   ├── annotations.py
+│   │   └── reader.py
+│   ├── services/
+│   │   ├── article_service.py
+│   │   ├── arxiv_service.py
+│   │   ├── bibtex_service.py
+│   │   ├── file_service.py
+│   │   └── search_service.py
+│   ├── static/
+│   │   ├── css/style.css
+│   │   └── js/
+│   │       ├── library.js
+│   │       ├── reader.js
+│   │       └── annotations.js
+│   └── templates/
+│       ├── base.html
+│       ├── library.html
+│       └── reader.html
+└── uploads/                # Stored PDFs (gitignored except .gitkeep)
 ```
 
-## Data and persistence
+---
 
-- SQLAlchemy schema is created automatically at startup (`db.create_all()`)
-- Local SQLite database: `library.db`
-- Uploaded PDFs are stored in `uploads/`
+## API Reference
 
-To reset local data:
+<details>
+<summary>Articles</summary>
+
+| Method     | Endpoint                           | Description                                                         |
+| ---------- | ---------------------------------- | ------------------------------------------------------------------- |
+| `GET`    | `/api/articles`                  | List articles (filters:`q`, `collection`, `status`, `year`) |
+| `POST`   | `/api/articles`                  | Add a new article                                                   |
+| `GET`    | `/api/articles/<id>`             | Get article details                                                 |
+| `PATCH`  | `/api/articles/<id>`             | Update article metadata                                             |
+| `DELETE` | `/api/articles/<id>`             | Delete an article                                                   |
+| `POST`   | `/api/articles/<id>/fetch-arxiv` | Re-fetch metadata from arXiv                                        |
+| `GET`    | `/api/articles/<id>/bibtex`      | Export single BibTeX                                                |
+| `POST`   | `/api/articles/bibtex-bulk`      | Export bulk BibTeX                                                  |
+
+</details>
+
+<details>
+<summary>Collections</summary>
+
+| Method     | Endpoint                                        | Description                    |
+| ---------- | ----------------------------------------------- | ------------------------------ |
+| `GET`    | `/api/collections`                            | List collections               |
+| `POST`   | `/api/collections`                            | Create a collection            |
+| `PATCH`  | `/api/collections/<id>`                       | Rename a collection            |
+| `DELETE` | `/api/collections/<id>`                       | Delete a collection            |
+| `POST`   | `/api/collections/<id>/articles`              | Add article to collection      |
+| `DELETE` | `/api/collections/<id>/articles/<article_id>` | Remove article from collection |
+
+</details>
+
+<details>
+<summary>Annotations</summary>
+
+| Method           | Endpoint                                  | Description                    |
+| ---------------- | ----------------------------------------- | ------------------------------ |
+| `GET/POST`     | `/api/articles/<id>/highlights`         | List or create highlights      |
+| `PATCH/DELETE` | `/api/highlights/<id>`                  | Edit or delete a highlight     |
+| `GET/POST`     | `/api/articles/<id>/notes`              | List or create notes           |
+| `PATCH/DELETE` | `/api/notes/<id>`                       | Edit or delete a note          |
+| `GET`          | `/api/articles/<id>/annotations/export` | Export annotations to Markdown |
+
+</details>
+
+---
+
+## Data and Persistence
+
+The database and uploaded files are created locally on first run — no external services required.
+
+- **Database**: `library.db` (SQLite, auto-created by SQLAlchemy)
+- **PDFs**: stored in `uploads/`
+
+To reset all local data:
 
 ```bash
-rm -f library.db app/library.db
+rm -f library.db
 rm -f uploads/*.pdf
 ```
 
-(`uploads/.gitkeep` can be kept.)
+---
 
-## Known limitations
+## Known Limitations
 
-- Scanned PDFs without a text layer provide limited extraction/search quality
-- Full-text search currently uses SQL `LIKE` (not FTS5)
-- `run.py` uses `debug=True` for local development
+- Scanned PDFs (image-only) provide limited text extraction and search quality.
+- Full-text search uses SQL `LIKE` — not FTS5 (no fuzzy matching).
+- `run.py` uses `debug=True`, intended for local development only.
+- For papers added from option PDF file, metadata aren't extracted and stored.
+
+---
+
+## License
+
+[MIT](LICENSE) — Amaury Fierens, 2026.
