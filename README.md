@@ -210,7 +210,7 @@ rm -f uploads/*.pdf
 - Scanned PDFs (image-only) provide limited text extraction and search quality.
 - Full-text search uses SQL `LIKE` — not FTS5 (no fuzzy matching).
 - `run.py` uses `debug=True`, intended for local development only.
-- For papers added from option PDF file, metadata aren't extracted and stored.
+- For papers added from option PDF file, metadata aren't extracted and stored.ais
 
 ---
 
